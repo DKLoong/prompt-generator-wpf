@@ -19,7 +19,7 @@ public partial class App : Application
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
-        MessageBox.Show($"发生未处理异常：\n{e.Exception.Message}", "提示词生成器",
+        MessageBox.Show($"发生未处理异常：\n{e.Exception}", "提示词生成器",
             MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
     }

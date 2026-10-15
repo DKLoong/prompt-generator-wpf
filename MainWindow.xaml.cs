@@ -495,8 +495,11 @@ public partial class MainWindow : Window
         var r = MessageBox.Show($"删除模板「{_current.Name}」？", "删除模板",
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (r != MessageBoxResult.Yes) return;
-        _data.Templates.Remove(_current);
-        _savedSnapshots.Remove(_current.Id);
+        // 保存本地引用：_data.Templates.Remove 会同步触发 SelectionChanged → LoadCurrentTemplate
+        // → 把 _current 置 null，后面再访问 _current.Id 会 NRE。
+        var current = _current;
+        _data.Templates.Remove(current);
+        _savedSnapshots.Remove(current.Id);
         _current = null;
         try { _store.Save(_data); } catch { }
         RefreshTemplateBox();
