@@ -28,42 +28,40 @@
                         <DataTemplate>
                             <Border Background="{StaticResource Panel2Brush}" CornerRadius="6"
                                     Padding="10" Margin="0,0,0,8">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding TemplateName}"
                                                        Foreground="{StaticResource AccentBrush}"
-                                                       FontSize="12" FontWeight="SemiBold"/>
+                                                       FontSize="12" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Timestamp, StringFormat=' · {0:MM-dd HH:mm}'}"
                                                        Foreground="{StaticResource MutedBrush}" FontSize="11"
-                                                       Margin="6,0,0,0"/>
+                                                       Margin="6,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
-                                        <TextBox Text="{Binding Prompt}"
-                                                 Foreground="{StaticResource TextBrush}" FontSize="12"
-                                                 TextWrapping="Wrap" IsReadOnly="True"
-                                                 Background="Transparent" BorderThickness="0"
-                                                 Padding="0" Cursor="IBeam"
-                                                 Focusable="False"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                        <Button Content="复制" Width="56" Height="26" Margin="0,0,0,4"
-                                                Style="{StaticResource ActionBtn}" FontSize="11"
-                                                Background="{StaticResource BorderBrush}"
-                                                Click="CopyBtn_Click" Tag="{Binding Id}"/>
-                                        <Button Content="编辑" Width="56" Height="26" Margin="0,0,0,4"
-                                                Style="{StaticResource ActionBtn}" FontSize="11"
-                                                Background="{StaticResource BorderBrush}"
-                                                Click="EditBtn_Click" Tag="{Binding Id}"/>
-                                        <Button Content="删除" Width="56" Height="26"
-                                                Style="{StaticResource ActionBtn}" FontSize="11"
-                                                Background="{StaticResource BorderBrush}"
-                                                Click="DeleteBtn_Click" Tag="{Binding Id}"/>
-                                    </StackPanel>
-                                </Grid>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Content="复制" Width="48" Height="24" Margin="4,0,0,0"
+                                                    Style="{StaticResource ActionBtn}" FontSize="11"
+                                                    Background="{StaticResource BorderBrush}"
+                                                    Click="CopyBtn_Click" Tag="{Binding Id}"/>
+                                            <Button Content="编辑" Width="48" Height="24" Margin="4,0,0,0"
+                                                    Style="{StaticResource ActionBtn}" FontSize="11"
+                                                    Background="{StaticResource BorderBrush}"
+                                                    Click="EditBtn_Click" Tag="{Binding Id}"/>
+                                            <Button Content="删除" Width="48" Height="24" Margin="4,0,0,0"
+                                                    Style="{StaticResource ActionBtn}" FontSize="11"
+                                                    Background="{StaticResource BorderBrush}"
+                                                    Click="DeleteBtn_Click" Tag="{Binding Id}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBox Text="{Binding Prompt}"
+                                             Foreground="{StaticResource TextBrush}" FontSize="12"
+                                             TextWrapping="Wrap" IsReadOnly="True"
+                                             Background="Transparent" BorderThickness="0"
+                                             Padding="0" Cursor="IBeam"
+                                             SelectionBrush="{StaticResource AccentBrush}"
+                                             SelectionOpacity="0.4"/>
+                                </StackPanel>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
