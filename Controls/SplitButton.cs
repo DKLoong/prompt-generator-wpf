@@ -25,7 +25,8 @@ public class SplitButton : UserControl
             CornerRadius = new CornerRadius(6),
             Background = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
             Height = 36,
-            Cursor = System.Windows.Input.Cursors.Hand
+            Cursor = System.Windows.Input.Cursors.Hand,
+            ClipToBounds = true
         };
 
         var grid = new Grid();
@@ -42,7 +43,8 @@ public class SplitButton : UserControl
             BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
             HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Template = BuildButtonTemplate(new CornerRadius(6, 0, 0, 6))
         };
         _leftBtn.Click += (_, _) => Executed?.Invoke(this, _mode);
 
@@ -55,7 +57,8 @@ public class SplitButton : UserControl
             BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
             HorizontalContentAlignment = HorizontalAlignment.Center,
-            VerticalContentAlignment = VerticalAlignment.Center
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Template = BuildButtonTemplate(new CornerRadius(0, 6, 6, 0))
         };
         _rightBtn.Click += (_, _) => ShowMenu();
 
@@ -65,6 +68,34 @@ public class SplitButton : UserControl
 
         root.Child = grid;
         Content = root;
+    }
+
+    /// <summary>生成透明底、无边框的按钮模板；hover 时叠淡紫高亮（白 25% 叠加在紫底上），圆角与按钮所在半区一致。</summary>
+    private static ControlTemplate BuildButtonTemplate(CornerRadius radius)
+    {
+        var templ = new ControlTemplate(typeof(Button));
+        var border = new FrameworkElementFactory(typeof(Border), "bd");
+        border.SetValue(Border.BackgroundProperty, Brushes.Transparent);
+        border.SetValue(Border.BorderThicknessProperty, new Thickness(0));
+        border.SetValue(Border.CornerRadiusProperty, radius);
+
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
+        presenter.SetValue(ContentPresenter.MarginProperty, new Thickness(8, 0, 8, 0));
+        border.AppendChild(presenter);
+
+        templ.VisualTree = border;
+
+        var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
+        hover.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x40, 0xff, 0xff, 0xff))));
+        templ.Triggers.Add(hover);
+
+        var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
+        pressed.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x60, 0xff, 0xff, 0xff))));
+        templ.Triggers.Add(pressed);
+
+        return templ;
     }
 
     private readonly Button _leftBtn;
