@@ -58,28 +58,29 @@ public class AutoGrowTextBox : TextBox
             return;
         }
         // 等当前布局周期完成后，直接读取 ScrollViewer 的实际内容高度（ExtentHeight）。
-        // 旧版用 FormattedText 手动测量，因 PART_ContentHost 内部是 TextBoxView 而非 TextBlock，
-        // 导致换行点与实际渲染不一致，高度少算一行，首行被裁剪。
-        // 改用 WPF 自己的布局结果，避免测量误差。
-        Dispatcher.BeginInvoke(new Action(() =>
+        Dispatcher.BeginInvoke(new Action(() => SyncResize()),
+            System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    /// <summary>
+    /// 同步根据 ScrollViewer.ExtentHeight 计算并设置高度。
+    /// 由 RenderFields 在 UpdateLayout() 后调用，避免重建后先 32px 再异步长高的闪烁。
+    /// </summary>
+    public void SyncResize()
+    {
+        if (ActualWidth <= 20 || string.IsNullOrEmpty(Text)) return;
+        if (GetTemplateChild("PART_ContentHost") is not ScrollViewer sv) return;
+        if (sv.ExtentHeight <= 0) return;
+        double needed = sv.ExtentHeight + Padding.Top + Padding.Bottom + 2 + 8;
+        needed = Math.Max(MinHeightPx, Math.Min(MaxHeightPx, needed));
+        if (_lastNeeded <= 0 || Math.Abs(needed - _lastNeeded) >= 2.0)
         {
-            if (GetTemplateChild("PART_ContentHost") is not ScrollViewer sv) return;
-            if (sv.ExtentHeight <= 0) return;
-            // Height = 内容高度 + Padding(经 ScrollViewer.Margin 生效) + BorderThickness 上下各 1
-            // 末尾再加 8px 缓冲，吸收 DPI 舍入与 TextBoxView 内部边距误差，避免最后一行底部被裁。
-            double needed = sv.ExtentHeight + Padding.Top + Padding.Bottom + 2 + 8;
-            needed = Math.Max(MinHeightPx, Math.Min(MaxHeightPx, needed));
-            // 阈值 2px：ExtentHeight 在多行时会因换行点/DPI 舍入波动 1-2px，
-            // 只有真正变化超过 2px 才更新 Height，避免每次输入都触发视口跳动。
-            if (_lastNeeded <= 0 || Math.Abs(needed - _lastNeeded) >= 2.0)
+            _lastNeeded = needed;
+            if (Math.Abs(Height - needed) > 0.5)
             {
-                _lastNeeded = needed;
-                if (Math.Abs(Height - needed) > 0.5)
-                {
-                    Height = needed;
-                    sv.ScrollToVerticalOffset(0);
-                }
+                Height = needed;
+                sv.ScrollToVerticalOffset(0);
             }
-        }), System.Windows.Threading.DispatcherPriority.Background);
+        }
     }
 }

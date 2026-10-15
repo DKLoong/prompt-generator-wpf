@@ -537,14 +537,13 @@ public partial class MainWindow : Window
         }
         _suppressReclaim = false;
         UpdateDup();
-        // 布局完成后重算所有内容框高度（新增行时 ActualWidth 初始为 0，需延迟重算）
+        // 布局完成后同步重算所有内容框高度（同步而非异步，避免重建后先 32px 再长高的闪烁）
         Dispatcher.BeginInvoke(new Action(() =>
         {
             UpdateLayout();
             foreach (var tb in FindVisualChildren<AutoGrowTextBox>(this))
             {
-                tb.InvalidateMeasure();
-                tb.InvalidateArrange();
+                tb.SyncResize();
             }
         }), System.Windows.Threading.DispatcherPriority.Render);
     }
@@ -678,6 +677,31 @@ public partial class MainWindow : Window
                 _fresh.Remove((rowIndex, itemIndex));
                 field.Items.RemoveAt(itemIndex);
                 RenderFields();
+            }
+        };
+        // 聚焦到有内容的框时，回收当前字段所有残留的"刚插入未输入"空框；
+        // 直接移除对应 UI 行，不重建，焦点保持在用户点击的框上。
+        ta.GotKeyboardFocus += (_, _) =>
+        {
+            if (_suppressReclaim) return;
+            if (string.IsNullOrWhiteSpace(ta.Text)) return;
+            if (_fresh.Count == 0) return;
+            if (ta.Parent is not Grid itemGrid || itemGrid.Parent is not StackPanel right) return;
+            var stale = _fresh.Where(k => k.Item1 == rowIndex
+                && k.Item2 < field.Items.Count
+                && string.IsNullOrWhiteSpace(field.Items[k.Item2])).ToList();
+            if (stale.Count == 0) return;
+            foreach (var k in stale.OrderByDescending(k => k.Item2))
+            {
+                _fresh.Remove(k);
+                field.Items.RemoveAt(k.Item2);
+                if (k.Item2 < right.Children.Count) right.Children.RemoveAt(k.Item2);
+            }
+            // 重新编号
+            for (int j = 0; j < right.Children.Count; j++)
+            {
+                if (right.Children[j] is Grid ig && ig.Children.Count > 0 && ig.Children[0] is TextBlock tb)
+                    tb.Text = (j + 1) + ".";
             }
         };
 
