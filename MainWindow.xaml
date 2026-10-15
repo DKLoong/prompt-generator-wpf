@@ -55,7 +55,10 @@
                     <Button x:Name="PinBtn" Width="24" Height="24"
                             FontSize="13" Content="&#x1F4CC;" FontFamily="Segoe UI Emoji"
                             Foreground="#9a9bb5"
-                            ToolTip="切换窗口置顶" Click="PinBtn_Click">
+                            FocusVisualStyle="{x:Null}"
+                            ToolTip="切换窗口置顶"
+                            ToolTipService.InitialShowDelay="200"
+                            Click="PinBtn_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="bd" Width="22" Height="22" CornerRadius="5"
