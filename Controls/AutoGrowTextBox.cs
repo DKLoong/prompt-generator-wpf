@@ -63,7 +63,8 @@ public class AutoGrowTextBox : TextBox
             if (GetTemplateChild("PART_ContentHost") is not ScrollViewer sv) return;
             if (sv.ExtentHeight <= 0) return;
             // Height = 内容高度 + Padding(经 ScrollViewer.Margin 生效) + BorderThickness 上下各 1
-            double needed = sv.ExtentHeight + Padding.Top + Padding.Bottom + 2;
+            // 末尾再加 4px 缓冲，吸收 DPI 舍入与 TextBoxView 内部边距误差，避免最后一行底部被裁。
+            double needed = sv.ExtentHeight + Padding.Top + Padding.Bottom + 2 + 4;
             needed = Math.Max(MinHeightPx, Math.Min(MaxHeightPx, needed));
             if (Math.Abs(Height - needed) > 0.5)
             {
