@@ -522,12 +522,22 @@ public partial class MainWindow : Window
 
     private void SaveTemplate_Click(object sender, RoutedEventArgs e)
     {
+        if (_current == null) return;
+        // 同步 ComboBox 文本到模板名
+        _current.Name = TemplateBox.Text?.Trim() ?? "";
+        // 模板名重复校验
+        var dup = _data.Templates.FirstOrDefault(t =>
+            t != _current && string.Equals(t.Name?.Trim(), _current.Name.Trim(), StringComparison.Ordinal));
+        if (dup != null)
+        {
+            ShowToast($"模板名「{_current.Name}」已存在", false);
+            return;
+        }
         if (UpdateDup())
         {
             ShowToast("字段名重复，无法保存", false);
             return;
         }
-        if (_current == null) return;
         try
         {
             _store.Save(_data);
