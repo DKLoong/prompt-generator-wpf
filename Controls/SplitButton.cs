@@ -44,6 +44,7 @@ public class SplitButton : UserControl
             Cursor = System.Windows.Input.Cursors.Hand,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
+            FocusVisualStyle = null,
             Template = BuildButtonTemplate(new CornerRadius(6, 0, 0, 6))
         };
         _leftBtn.Click += (_, _) => Executed?.Invoke(this, _mode);
@@ -58,6 +59,7 @@ public class SplitButton : UserControl
             Cursor = System.Windows.Input.Cursors.Hand,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
+            FocusVisualStyle = null,
             Template = BuildButtonTemplate(new CornerRadius(0, 6, 6, 0))
         };
         _rightBtn.Click += (_, _) => ShowMenu();
@@ -106,6 +108,10 @@ public class SplitButton : UserControl
         var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
         pressed.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x60, 0xff, 0xff, 0xff)), "bd"));
         templ.Triggers.Add(pressed);
+
+        var focused = new Trigger { Property = UIElement.IsKeyboardFocusedProperty, Value = true };
+        focused.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x40, 0xff, 0xff, 0xff)), "bd"));
+        templ.Triggers.Add(focused);
 
         return templ;
     }

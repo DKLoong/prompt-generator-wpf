@@ -510,6 +510,7 @@ public partial class MainWindow : Window
         _current = null;
         try { _store.Save(_data); } catch { }
         RefreshTemplateBox();
+        TemplateBox.Focus();
         ShowToast("已删除模板");
     }
 
