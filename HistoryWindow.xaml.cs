@@ -31,12 +31,20 @@ public partial class HistoryWindow : Window
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
+    private void WindowDrag_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+            DragMove();
+    }
+
     private void CopyBtn_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button btn || btn.Tag is not string id) return;
         var entry = _history.FirstOrDefault(h => h.Id == id);
         if (entry == null) return;
         try { Clipboard.SetText(entry.Prompt); } catch { }
+        // 点击后清除按钮焦点，避免紫色高亮残留
+        btn.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
     }
 
     private void EditBtn_Click(object sender, RoutedEventArgs e)

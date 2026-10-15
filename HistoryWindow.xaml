@@ -5,7 +5,8 @@
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <Border Background="{StaticResource PanelBrush}" CornerRadius="10"
-            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+            MouseLeftButtonDown="WindowDrag_MouseLeftButtonDown">
         <Grid Margin="14">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -43,8 +44,7 @@
                                         </StackPanel>
                                         <TextBlock Text="{Binding Prompt}"
                                                    Foreground="{StaticResource TextBrush}" FontSize="12"
-                                                   TextWrapping="Wrap" MaxHeight="60"
-                                                   TextTrimming="CharacterEllipsis"/>
+                                                   TextWrapping="Wrap"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                         <Button Content="复制" Width="56" Height="26" Margin="0,0,0,4"
