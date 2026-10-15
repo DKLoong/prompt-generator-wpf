@@ -66,6 +66,18 @@ public class SplitButton : UserControl
         grid.Children.Add(_rightBtn);
         Grid.SetColumn(_rightBtn, 1);
 
+        // 两列之间的 1px 分隔竖线（原来由默认 Button 模板绘制，自定义模板后需手动补回）
+        var divider = new Border
+        {
+            Width = 1,
+            VerticalAlignment = VerticalAlignment.Stretch,
+            Background = new SolidColorBrush(Color.FromArgb(0x55, 0xff, 0xff, 0xff)),
+            IsHitTestVisible = false
+        };
+        Grid.SetColumn(divider, 0);
+        divider.HorizontalAlignment = HorizontalAlignment.Right;
+        grid.Children.Add(divider);
+
         root.Child = grid;
         Content = root;
     }
@@ -88,11 +100,11 @@ public class SplitButton : UserControl
         templ.VisualTree = border;
 
         var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-        hover.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x40, 0xff, 0xff, 0xff))));
+        hover.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x40, 0xff, 0xff, 0xff)), "bd"));
         templ.Triggers.Add(hover);
 
         var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
-        pressed.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x60, 0xff, 0xff, 0xff))));
+        pressed.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x60, 0xff, 0xff, 0xff)), "bd"));
         templ.Triggers.Add(pressed);
 
         return templ;
