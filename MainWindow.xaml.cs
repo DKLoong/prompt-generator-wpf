@@ -775,7 +775,11 @@ public partial class MainWindow : Window
         delItem.Click += (_, _) =>
         {
             int idx = getIndex();
-            if (field.Items.Count == 1) { field.Items[0] = ""; }
+            if (field.Items.Count == 1)
+            {
+                field.Items[0] = "";
+                ta.Text = "";
+            }
             else { field.Items.RemoveAt(idx); RemoveItemUi(getRowIndex(), idx); }
             FocusFirstInput();
         };
