@@ -688,7 +688,7 @@ public partial class MainWindow : Window
             Foreground = new SolidColorBrush(Color.FromRgb(0x9a, 0x9b, 0xb5)),
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 4, 0, 0),
-            Visibility = Visibility.Collapsed,
+            Visibility = Visibility.Visible,
             ToolTip = "删除此项"
         };
         delItem.Style = FindIconBtnStyle();
@@ -699,8 +699,6 @@ public partial class MainWindow : Window
             RenderFields();
             FocusFirstInput();
         };
-        item.MouseEnter += (_, _) => delItem.Visibility = Visibility.Visible;
-        item.MouseLeave += (_, _) => delItem.Visibility = Visibility.Collapsed;
 
         item.Children.Add(num);
         item.Children.Add(ta);
