@@ -562,15 +562,38 @@ public partial class MainWindow : Window
     private RowGap MakeRowGap(int insertIndex)
     {
         var gap = new RowGap();
-        int idx = insertIndex;
         gap.AddClicked += (_, _) =>
         {
             if (_current == null) return;
-            _current.Fields.Insert(idx, new Field { Name = "", Items = { "" } });
-            RenderFields();
-            FocusFieldName(idx);
+            AddFieldAt(insertIndex);
         };
         return gap;
+    }
+
+    /// <summary>在指定位置增量插入一个字段行，不重建其他字段。</summary>
+    private void AddFieldAt(int rowIndex)
+    {
+        if (_current == null) return;
+        var f = new Field { Name = "", Items = { "" } };
+        _current.Fields.Insert(rowIndex, f);
+        // 字段行在 FieldHost.Children 中位于 2*rowIndex（后面跟一个 RowGap）
+        var newRow = RenderRow(rowIndex, f);
+        var newGap = MakeRowGap(rowIndex + 1);
+        int pos = 2 * rowIndex;
+        FieldHost.Children.Insert(pos, newGap);
+        FieldHost.Children.Insert(pos, newRow);
+        FocusFieldName(rowIndex);
+    }
+
+    /// <summary>增量移除指定位置的字段行及其 RowGap。</summary>
+    private void RemoveFieldAt(int rowIndex)
+    {
+        if (_current == null) return;
+        _current.Fields.RemoveAt(rowIndex);
+        int pos = 2 * rowIndex;
+        if (pos < FieldHost.Children.Count) FieldHost.Children.RemoveAt(pos); // RowGap
+        if (pos < FieldHost.Children.Count) FieldHost.Children.RemoveAt(pos); // Row
+        UpdateDup();
     }
 
     private UIElement RenderRow(int rowIndex, Field field)
@@ -578,6 +601,13 @@ public partial class MainWindow : Window
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(127) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // 动态读取本行在 FieldHost.Children 中的实际位置（字段行在偶数索引）
+        Func<int> getRowIndex = () =>
+        {
+            int idx = FieldHost.Children.IndexOf(grid);
+            return idx >= 0 ? idx / 2 : rowIndex;
+        };
 
         // 左列：× + 字段名（内部垂直居中，整体贴第一条内容框顶端）
         var left = new StackPanel { Orientation = Orientation.Horizontal, Height = 32, VerticalAlignment = VerticalAlignment.Top };
@@ -594,8 +624,7 @@ public partial class MainWindow : Window
         delRow.Click += (_, _) =>
         {
             if (_current == null) return;
-            _current.Fields.RemoveAt(rowIndex);
-            RenderFields();
+            RemoveFieldAt(getRowIndex());
         };
 
         var nameBox = new TextBox
