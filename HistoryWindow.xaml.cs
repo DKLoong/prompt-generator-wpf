@@ -64,5 +64,6 @@ public partial class HistoryWindow : Window
         _history.Remove(entry);
         _onDelete?.Invoke(entry);
         RefreshList();
+        btn.MoveFocus(new System.Windows.Input.TraversalRequest(System.Windows.Input.FocusNavigationDirection.Next));
     }
 }

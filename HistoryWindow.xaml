@@ -42,19 +42,25 @@
                                                        Foreground="{StaticResource MutedBrush}" FontSize="11"
                                                        Margin="6,0,0,0"/>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Prompt}"
-                                                   Foreground="{StaticResource TextBrush}" FontSize="12"
-                                                   TextWrapping="Wrap"/>
+                                        <TextBox Text="{Binding Prompt}"
+                                                 Foreground="{StaticResource TextBrush}" FontSize="12"
+                                                 TextWrapping="Wrap" IsReadOnly="True"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 Padding="0" Cursor="IBeam"
+                                                 Focusable="False"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                         <Button Content="复制" Width="56" Height="26" Margin="0,0,0,4"
                                                 Style="{StaticResource ActionBtn}" FontSize="11"
+                                                Background="{StaticResource BorderBrush}"
                                                 Click="CopyBtn_Click" Tag="{Binding Id}"/>
                                         <Button Content="编辑" Width="56" Height="26" Margin="0,0,0,4"
                                                 Style="{StaticResource ActionBtn}" FontSize="11"
+                                                Background="{StaticResource BorderBrush}"
                                                 Click="EditBtn_Click" Tag="{Binding Id}"/>
                                         <Button Content="删除" Width="56" Height="26"
                                                 Style="{StaticResource ActionBtn}" FontSize="11"
+                                                Background="{StaticResource BorderBrush}"
                                                 Click="DeleteBtn_Click" Tag="{Binding Id}"/>
                                     </StackPanel>
                                 </Grid>

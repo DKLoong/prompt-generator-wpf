@@ -1024,7 +1024,6 @@ public partial class MainWindow : Window
         var win = new HistoryWindow(_data.History,
             onEdit: entry =>
             {
-                // 恢复历史快照到编辑区
                 if (_current == null) return;
                 _current.Fields = DeepCopyFields(entry.Fields);
                 RenderFields();
@@ -1037,7 +1036,7 @@ public partial class MainWindow : Window
         {
             Owner = this
         };
-        win.ShowDialog();
+        win.Show();
     }
 
     /// <summary>打开设置弹窗，保存后应用：热键重注册 + 贴边开关持久化。</summary>
