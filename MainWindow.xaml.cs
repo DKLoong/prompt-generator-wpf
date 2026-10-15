@@ -677,6 +677,12 @@ public partial class MainWindow : Window
         // 动态读取本行在 right.Children 中的实际位置；增量插入/删除后旧闭包自动得到正确索引
         Func<int> getIndex = () =>
             item.Parent is StackPanel right ? right.Children.IndexOf(item) : itemIndex;
+        // 动态读取本行所属字段在 FieldHost.Children 中的实际行号；
+        // 字段级增量插入后旧闭包的 rowIndex 会错位，必须通过视觉树反查。
+        Func<int> getRowIndex = () =>
+            item.Parent is StackPanel right && right.Parent is Grid rowGrid
+                ? FieldHost.Children.IndexOf(rowGrid) / 2
+                : rowIndex;
 
         var num = new TextBlock
         {
@@ -698,7 +704,7 @@ public partial class MainWindow : Window
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
             {
                 e.Handled = true;
-                InsertItem(rowIndex, getIndex() + 1);
+                InsertItem(getRowIndex(), getIndex() + 1);
             }
         };
         ta.TextChanged += (_, _) => field.Items[getIndex()] = ta.Text;
@@ -706,14 +712,15 @@ public partial class MainWindow : Window
         {
             if (_suppressReclaim) return;
             int idx = getIndex();
+            int ri = getRowIndex();
             // 仅回收"刚插入且未输入"的空子项，避免打断正常编辑
-            if (_fresh.Contains((rowIndex, idx))
+            if (_fresh.Contains((ri, idx))
                 && string.IsNullOrWhiteSpace(ta.Text)
                 && field.Items.Count > 1)
             {
-                _fresh.Remove((rowIndex, idx));
+                _fresh.Remove((ri, idx));
                 field.Items.RemoveAt(idx);
-                RemoveItemUi(rowIndex, idx);
+                RemoveItemUi(ri, idx);
             }
         };
         // 聚焦到有内容的框时，回收当前字段所有残留的"刚插入未输入"空框；
@@ -724,7 +731,8 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(ta.Text)) return;
             if (_fresh.Count == 0) return;
             if (ta.Parent is not Grid itemGrid || itemGrid.Parent is not StackPanel right) return;
-            var stale = _fresh.Where(k => k.Item1 == rowIndex
+            int ri = getRowIndex();
+            var stale = _fresh.Where(k => k.Item1 == ri
                 && k.Item2 < field.Items.Count
                 && string.IsNullOrWhiteSpace(field.Items[k.Item2])).ToList();
             if (stale.Count == 0) return;
@@ -752,7 +760,7 @@ public partial class MainWindow : Window
         {
             int idx = getIndex();
             if (field.Items.Count == 1) { field.Items[0] = ""; }
-            else { field.Items.RemoveAt(idx); RemoveItemUi(rowIndex, idx); }
+            else { field.Items.RemoveAt(idx); RemoveItemUi(getRowIndex(), idx); }
             FocusFirstInput();
         };
 
