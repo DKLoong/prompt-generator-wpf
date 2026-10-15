@@ -114,7 +114,9 @@
             </Grid>
 
             <!-- 字段区 -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="10,0,10,4">
+            <!-- Hidden：滚动条不可见但始终预留其布局位置，避免内容刚好超出视口时弹出滚动条挤压内容宽度。
+                 Padding 右边取 0，由滚动条预留的 ~10px 充当右边距，与左边距视觉对称。 -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden" Padding="10,0,0,4">
                 <StackPanel x:Name="FieldHost" />
             </ScrollViewer>
 
