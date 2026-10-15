@@ -1024,8 +1024,18 @@ public partial class MainWindow : Window
         var win = new HistoryWindow(_data.History,
             onEdit: entry =>
             {
-                if (_current == null) return;
-                _current.Fields = DeepCopyFields(entry.Fields);
+                // 基于历史快照新建一个临时模板，不覆盖当前正在编辑的模板
+                var t = new Template
+                {
+                    Name = $"{entry.TemplateName}（历史）",
+                    Fields = DeepCopyFields(entry.Fields)
+                };
+                _data.Templates.Add(t);
+                SaveSnapshot(t);
+                _loadingTemplates = true;
+                TemplateBox.SelectedItem = t;
+                _loadingTemplates = false;
+                _current = t;
                 RenderFields();
                 FocusFirstInput();
             },
