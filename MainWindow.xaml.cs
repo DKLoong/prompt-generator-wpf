@@ -912,6 +912,17 @@ public partial class MainWindow : Window
             ShowToast("内容为空，无法生成", false);
             return;
         }
+        // 写入历史
+        var entry = new HistoryEntry
+        {
+            TemplateName = _current?.Name ?? "",
+            Fields = DeepCopyFields(_current?.Fields ?? new List<Field>()),
+            Prompt = prompt
+        };
+        _data.History.Insert(0, entry);
+        if (_data.History.Count > 50) _data.History.RemoveRange(50, _data.History.Count - 50);
+        try { _store.Save(_data); } catch { }
+
         if (mode == ActionMode.Copy)
         {
             try
@@ -928,6 +939,16 @@ public partial class MainWindow : Window
         {
             SubmitPrompt(prompt);
         }
+    }
+
+    private static List<Field> DeepCopyFields(List<Field> src)
+    {
+        var list = new List<Field>();
+        foreach (var f in src)
+        {
+            list.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
+        }
+        return list;
     }
 
     private async void SubmitPrompt(string prompt)
@@ -997,6 +1018,27 @@ public partial class MainWindow : Window
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
     private void SettingsBtn_Click(object sender, RoutedEventArgs e) => OpenSettings();
+
+    private void HistoryBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var win = new HistoryWindow(_data.History,
+            onEdit: entry =>
+            {
+                // 恢复历史快照到编辑区
+                if (_current == null) return;
+                _current.Fields = DeepCopyFields(entry.Fields);
+                RenderFields();
+                FocusFirstInput();
+            },
+            onDelete: entry =>
+            {
+                try { _store.Save(_data); } catch { }
+            })
+        {
+            Owner = this
+        };
+        win.ShowDialog();
+    }
 
     /// <summary>打开设置弹窗，保存后应用：热键重注册 + 贴边开关持久化。</summary>
     private void OpenSettings()

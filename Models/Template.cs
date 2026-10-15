@@ -42,8 +42,21 @@ public class Template : INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(prop));
 }
 
+/// <summary>一次生成的历史记录。</summary>
+public class HistoryEntry
+{
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public DateTime Timestamp { get; set; } = DateTime.Now;
+    public string TemplateName { get; set; } = "";
+    /// <summary>生成时各字段内容快照（用于"编辑"恢复）。</summary>
+    public List<Field> Fields { get; set; } = new();
+    /// <summary>拼接好的完整提示词。</summary>
+    public string Prompt { get; set; } = "";
+}
+
 /// <summary>持久化根。ObservableCollection 让 ComboBox 在增删时自动刷新。</summary>
 public class TemplateStoreData
 {
     public ObservableCollection<Template> Templates { get; set; } = new();
+    public List<HistoryEntry> History { get; set; } = new();
 }

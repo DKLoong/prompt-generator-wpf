@@ -85,6 +85,25 @@
                                FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="HistoryBtn" Style="{StaticResource TitleBtn}" ToolTip="历史记录"
+                            ToolTipService.InitialShowDelay="200" Click="HistoryBtn_Click">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="bd" Width="22" Height="22" CornerRadius="4" Background="Transparent">
+                                    <Viewbox Stretch="Uniform" Width="14" Height="14">
+                                        <Path Data="M 11 2 A 9 9 0 1 1 2 11"
+                                              Stroke="#9a9bb5" StrokeThickness="1.6" Fill="None"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                    </Viewbox>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="#3c3d57" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
                     <Button x:Name="SettingsBtn" Style="{StaticResource TitleBtn}" Content="⚙"
                             ToolTip="设置" Click="SettingsBtn_Click" />
                     <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" Content="&#x2013;"
