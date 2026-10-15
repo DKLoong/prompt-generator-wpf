@@ -1,0 +1,32 @@
+# Build output
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Rider / VS Code
+.idea/
+.vscode/
+
+# .NET publish
+publish/
+
+# Runtime data (settings.json, templates, watermarks)
+data/
+
+# Dev screenshots / logs (temporary debug artifacts)
+win*.png
+win*.jpg
+shot*.jpg
+shot*.png
+tray-*.png
+cu-tray.png
+build-log.txt
+dpi-log.txt
+pad-log.txt
+debug.log
+
+# OS
+Thumbs.db
+.DS_Store

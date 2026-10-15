@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- 紫色圆角底 -->
+  <rect x="8" y="8" width="240" height="240" rx="56" ry="56" fill="#7c6cf0"/>
+  <!-- 左侧三块分块卡片 -->
+  <rect x="36" y="58" width="56" height="22" rx="6" fill="#ffffff"/>
+  <rect x="30" y="108" width="56" height="22" rx="6" fill="#ffffff"/>
+  <rect x="36" y="158" width="56" height="22" rx="6" fill="#ffffff"/>
+  <!-- 右侧成品大卡片 -->
+  <rect x="120" y="78" width="102" height="100" rx="12" fill="#ffffff"/>
+  <!-- 卡片内拼好的文本行 -->
+  <rect x="138" y="100" width="68" height="10" rx="5" fill="#7c6cf0"/>
+  <rect x="138" y="120" width="54" height="10" rx="5" fill="#7c6cf0"/>
+  <rect x="138" y="140" width="72" height="10" rx="5" fill="#7c6cf0"/>
+</svg>
