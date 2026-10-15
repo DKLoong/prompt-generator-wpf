@@ -703,6 +703,13 @@ public partial class MainWindow : Window
         {
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
             {
+                // 空框内按 Enter 不做任何操作：避免连续产生多个空框，
+                // 也避免 LostKeyboardFocus 回收后 _fresh 索引错位。
+                if (string.IsNullOrWhiteSpace(ta.Text))
+                {
+                    e.Handled = true;
+                    return;
+                }
                 e.Handled = true;
                 InsertItem(getRowIndex(), getIndex() + 1);
             }
