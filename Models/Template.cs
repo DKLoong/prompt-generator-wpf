@@ -36,6 +36,10 @@ public class Template : INotifyPropertyChanged
     [JsonIgnore]
     public bool Persisted { get; set; }
 
+    /// <summary>历史记录编辑产生的临时模板（不序列化）。切走时自动删除，除非用户点了"保存到模板"。</summary>
+    [JsonIgnore]
+    public bool IsTemp { get; set; }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string prop = "")

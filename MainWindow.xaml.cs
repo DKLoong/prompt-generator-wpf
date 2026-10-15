@@ -423,7 +423,13 @@ public partial class MainWindow : Window
         // - 无快照（新建未保存）：空白则删除，有内容则保留在内存
         if (_current != null)
         {
-            if (_savedSnapshots.ContainsKey(_current.Id))
+            // 临时模板（历史记录编辑产生）：切走时自动删除，除非用户点了"保存到模板"
+            if (_current.IsTemp && !_savedSnapshots.ContainsKey(_current.Id))
+            {
+                _data.Templates.Remove(_current);
+                try { _store.Save(_data); } catch { }
+            }
+            else if (_savedSnapshots.ContainsKey(_current.Id))
                 RestoreFromSnapshot(_current);
             else if (IsBlankNewTemplate(_current))
             {
@@ -1024,14 +1030,15 @@ public partial class MainWindow : Window
         var win = new HistoryWindow(_data.History,
             onEdit: entry =>
             {
-                // 基于历史快照新建一个临时模板，不覆盖当前正在编辑的模板
+                // 基于历史快照新建临时模板，不覆盖当前模板；切走时自动删除，
+                // 除非用户点了"保存到模板"（那时会 SaveSnapshot 持久化）。
                 var t = new Template
                 {
                     Name = $"{entry.TemplateName}（历史）",
-                    Fields = DeepCopyFields(entry.Fields)
+                    Fields = DeepCopyFields(entry.Fields),
+                    IsTemp = true
                 };
                 _data.Templates.Add(t);
-                SaveSnapshot(t);
                 _loadingTemplates = true;
                 TemplateBox.SelectedItem = t;
                 _loadingTemplates = false;
