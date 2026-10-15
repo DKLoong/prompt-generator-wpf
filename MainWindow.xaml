@@ -92,7 +92,7 @@
                                 <Border x:Name="bd" Width="22" Height="22" CornerRadius="4" Background="Transparent">
                                     <Viewbox Stretch="Uniform" Width="14" Height="14">
                                         <Path Data="M 11 2 A 9 9 0 1 1 2 11"
-                                              Stroke="#9a9bb5" StrokeThickness="1.6" Fill="None"
+                                              Stroke="#9a9bb5" StrokeThickness="1.6"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
                                     </Viewbox>
                                 </Border>
