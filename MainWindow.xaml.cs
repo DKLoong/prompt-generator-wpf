@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         _settingsStore = new SettingsStore(GetDataDir());
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照
@@ -80,6 +81,12 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
             Show();
             Activate();
+            // 唤起后自动展开模板列表，方向键选择，Enter 进入
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                TemplateBox.Focus();
+                TemplateBox.IsDropDownOpen = true;
+            }), System.Windows.Threading.DispatcherPriority.Input);
         }
     }
 
@@ -760,6 +767,7 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 4, 0, 0),
             Visibility = Visibility.Visible,
+            IsTabStop = false,
             ToolTip = "删除此项"
         };
         delItem.Style = FindIconBtnStyle();
@@ -863,6 +871,25 @@ public partial class MainWindow : Window
             }
         }
         return result;
+    }
+
+    // ---------------- 键盘全局快捷键 ----------------
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        // Ctrl+Enter：生成并复制
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            OnActionExecuted(this, ActionMode.Copy);
+            return;
+        }
+        // 模板下拉展开时按 Enter：选中当前项并把焦点移到第一个字段框
+        if (e.Key == Key.Enter && TemplateBox.IsDropDownOpen)
+        {
+            TemplateBox.IsDropDownOpen = false;
+            FocusFirstInput();
+        }
     }
 
     // ---------------- 生成与执行 ----------------
