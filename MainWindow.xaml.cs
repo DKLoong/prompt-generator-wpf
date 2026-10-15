@@ -642,6 +642,10 @@ public partial class MainWindow : Window
         item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
 
+        // 动态读取本行在 right.Children 中的实际位置；增量插入/删除后旧闭包自动得到正确索引
+        Func<int> getIndex = () =>
+            item.Parent is StackPanel right ? right.Children.IndexOf(item) : itemIndex;
+
         var num = new TextBlock
         {
             Text = (itemIndex + 1) + ".",
@@ -662,21 +666,22 @@ public partial class MainWindow : Window
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
             {
                 e.Handled = true;
-                InsertItem(rowIndex, itemIndex + 1);
+                InsertItem(rowIndex, getIndex() + 1);
             }
         };
-        ta.TextChanged += (_, _) => field.Items[itemIndex] = ta.Text;
+        ta.TextChanged += (_, _) => field.Items[getIndex()] = ta.Text;
         ta.LostKeyboardFocus += (_, _) =>
         {
             if (_suppressReclaim) return;
+            int idx = getIndex();
             // 仅回收"刚插入且未输入"的空子项，避免打断正常编辑
-            if (_fresh.Contains((rowIndex, itemIndex))
+            if (_fresh.Contains((rowIndex, idx))
                 && string.IsNullOrWhiteSpace(ta.Text)
                 && field.Items.Count > 1)
             {
-                _fresh.Remove((rowIndex, itemIndex));
-                field.Items.RemoveAt(itemIndex);
-                RenderFields();
+                _fresh.Remove((rowIndex, idx));
+                field.Items.RemoveAt(idx);
+                RemoveItemUi(rowIndex, idx);
             }
         };
         // 聚焦到有内容的框时，回收当前字段所有残留的"刚插入未输入"空框；
@@ -697,12 +702,7 @@ public partial class MainWindow : Window
                 field.Items.RemoveAt(k.Item2);
                 if (k.Item2 < right.Children.Count) right.Children.RemoveAt(k.Item2);
             }
-            // 重新编号
-            for (int j = 0; j < right.Children.Count; j++)
-            {
-                if (right.Children[j] is Grid ig && ig.Children.Count > 0 && ig.Children[0] is TextBlock tb)
-                    tb.Text = (j + 1) + ".";
-            }
+            RenumberItems(right);
         };
 
         var delItem = new Button
@@ -718,9 +718,9 @@ public partial class MainWindow : Window
         delItem.Style = FindIconBtnStyle();
         delItem.Click += (_, _) =>
         {
+            int idx = getIndex();
             if (field.Items.Count == 1) { field.Items[0] = ""; }
-            else { field.Items.RemoveAt(itemIndex); }
-            RenderFields();
+            else { field.Items.RemoveAt(idx); RemoveItemUi(rowIndex, idx); }
             FocusFirstInput();
         };
 
@@ -732,14 +732,47 @@ public partial class MainWindow : Window
         return item;
     }
 
+    /// <summary>在指定位置增量插入一个空内容框 UI，不重建其他行。</summary>
     private void InsertItem(int rowIndex, int itemIndex)
     {
         if (_current == null) return;
         var f = _current.Fields[rowIndex];
         f.Items.Insert(itemIndex, "");
+        // 调整 _fresh：原 >= itemIndex 的记录索引 +1（因为后续行整体后移）
+        var freshList = _fresh.ToList();
+        _fresh.Clear();
+        foreach (var k in freshList)
+        {
+            _fresh.Add(k.Item1 == rowIndex && k.Item2 >= itemIndex ? (k.Item1, k.Item2 + 1) : k);
+        }
         _fresh.Add((rowIndex, itemIndex));
-        RenderFields();
+
+        var rowGrid = FieldHost.Children.OfType<Grid>().ElementAt(rowIndex);
+        var right = rowGrid.Children.OfType<StackPanel>().ElementAt(1);
+        var newItem = RenderItem(rowIndex, f, itemIndex);
+        right.Children.Insert(itemIndex, newItem);
+        RenumberItems(right);
+
         FocusItemInput(rowIndex, itemIndex);
+    }
+
+    /// <summary>增量移除指定位置的内容框 UI（不重建其他行）。</summary>
+    private void RemoveItemUi(int rowIndex, int itemIndex)
+    {
+        var rowGrid = FieldHost.Children.OfType<Grid>().ElementAt(rowIndex);
+        var right = rowGrid.Children.OfType<StackPanel>().ElementAt(1);
+        if (itemIndex < right.Children.Count) right.Children.RemoveAt(itemIndex);
+        RenumberItems(right);
+    }
+
+    /// <summary>重新编号 right.Children 中各内容框的序号。</summary>
+    private static void RenumberItems(StackPanel right)
+    {
+        for (int j = 0; j < right.Children.Count; j++)
+        {
+            if (right.Children[j] is Grid ig && ig.Children.Count > 0 && ig.Children[0] is TextBlock tb)
+                tb.Text = (j + 1) + ".";
+        }
     }
 
     // ---------------- 字段名重复检测 ----------------
