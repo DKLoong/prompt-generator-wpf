@@ -367,6 +367,9 @@ public partial class MainWindow : Window
     {
         _expanded = false;
         _leftAt = DateTime.MinValue;
+        // 收回前关闭模板下拉框：窗口滑到屏幕外后，Popup 不会自动跟随隐藏，会残留在桌面上
+        if (TemplateBox.IsDropDownOpen)
+            TemplateBox.IsDropDownOpen = false;
         Left = _dockPosLeft;
         Top = _dockPosTop;
     }
