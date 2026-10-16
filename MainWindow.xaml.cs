@@ -38,6 +38,12 @@ public partial class MainWindow : Window
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
+        // Toast 悬浮提示相对窗口水平居中（Popup 默认与 TemplateBar 左缘对齐，需水平偏移）
+        ToastPopup.Opened += (_, _) =>
+        {
+            var w = ToastPopup.Child.DesiredSize.Width;   // 含左右 Margin
+            ToastPopup.HorizontalOffset = (ActualWidth - w) / 2.0 - 10;
+        };
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照

@@ -156,7 +156,7 @@
             <Popup x:Name="ToastPopup" PlacementTarget="{Binding ElementName=TemplateBar}"
                    Placement="Bottom" AllowsTransparency="True" StaysOpen="True"
                    IsHitTestVisible="False" Focusable="False">
-                <Border Margin="10,4,10,6" Background="#2B2B30" BorderBrush="#7C6CF0"
+                <Border Margin="10,2,10,6" Background="#2B2B30" BorderBrush="#7C6CF0"
                         BorderThickness="1" CornerRadius="4" Padding="10,5">
                     <TextBlock x:Name="Toast" FontSize="12" Foreground="{StaticResource OkBrush}" />
                 </Border>
