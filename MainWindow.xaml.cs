@@ -464,6 +464,35 @@ public partial class MainWindow : Window
 
     private void SaveSnapshot(Template t) => _savedSnapshots[t.Id] = DeepCopy(t);
 
+ /// <summary>
+    /// 非"保存到模板"场景（生成、历史删除）落盘：只写入最近一次显式保存的状态。
+    /// 当前模板若有未保存的编辑，写盘时临时用快照内容替换，写完立即还原——
+    /// 既不把未保存的编辑落盘，也不影响用户继续编辑。
+    /// </summary>
+    private void PersistData()
+    {
+        if (_current == null || !_savedSnapshots.TryGetValue(_current.Id, out var snap))
+        {
+            _store.Save(_data);
+            return;
+        }
+        string liveName = _current.Name;
+        var liveFields = _current.Fields;   // 实时编辑用的列表（UI 闭包持有其 Field 对象）
+        _loadingTemplates = true;           // 避免临时改名触发下拉框文本回写
+        try
+        {
+            _current.Name = snap.Name;
+            _current.Fields = snap.Fields;
+            _store.Save(_data);
+        }
+        finally
+        {
+            _current.Name = liveName;
+            _current.Fields = liveFields;
+            _loadingTemplates = false;
+        }
+    }
+ 
     private void RestoreFromSnapshot(Template t)
     {
         if (!_savedSnapshots.TryGetValue(t.Id, out var snap)) return;
@@ -953,7 +982,7 @@ public partial class MainWindow : Window
         };
         _data.History.Insert(0, entry);
         if (_data.History.Count > 50) _data.History.RemoveRange(50, _data.History.Count - 50);
-        try { _store.Save(_data); } catch { }
+         try { PersistData(); } catch { }
 
         if (mode == ActionMode.Copy)
         {
@@ -1074,7 +1103,7 @@ public partial class MainWindow : Window
             },
             onDelete: entry =>
             {
-                try { _store.Save(_data); } catch { }
+                try { PersistData(); } catch { }
             })
         {
             Owner = this
