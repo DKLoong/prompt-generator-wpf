@@ -115,7 +115,7 @@
             </Grid>
 
             <!-- 模板工具栏 -->
-            <Grid Grid.Row="1" Margin="10,2,10,6">
+            <Grid x:Name="TemplateBar" Grid.Row="1" Margin="10,2,10,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -150,10 +150,17 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <ctrl:SplitButton x:Name="ActionButton" VerticalAlignment="Center" />
-                <TextBlock x:Name="Toast" Grid.Column="1" VerticalAlignment="Center"
-                           Foreground="{StaticResource OkBrush}" FontSize="12" Margin="10,0,0,0"
-                           Visibility="Collapsed" />
             </Grid>
+
+            <!-- 轻提示：悬浮于模板工具栏下方，独立层不参与布局（消除按钮伸缩抖动） -->
+            <Popup x:Name="ToastPopup" PlacementTarget="{Binding ElementName=TemplateBar}"
+                   Placement="Bottom" AllowsTransparency="True" StaysOpen="True"
+                   IsHitTestVisible="False" Focusable="False">
+                <Border Margin="10,4,10,6" Background="#2B2B30" BorderBrush="#7C6CF0"
+                        BorderThickness="1" CornerRadius="4" Padding="10,5">
+                    <TextBlock x:Name="Toast" FontSize="12" Foreground="{StaticResource OkBrush}" />
+                </Border>
+            </Popup>
 
             <!-- 托盘图标（不可见元素，托盘独立渲染；IconSource 在代码中生成位图） -->
             <tb:TaskbarIcon x:Name="TrayIcon" Grid.Row="0"

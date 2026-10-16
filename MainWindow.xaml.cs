@@ -1310,12 +1310,12 @@ public partial class MainWindow : Window
         Toast.Foreground = ok
             ? (Brush)FindResource("OkBrush")
             : (Brush)FindResource("DangerBrush");
-        Toast.Visibility = Visibility.Visible;
+        ToastPopup.IsOpen = true;
         _toastTimer?.Stop();
         _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _toastTimer.Tick += (_, _) =>
         {
-            Toast.Visibility = Visibility.Collapsed;
+            ToastPopup.IsOpen = false;
             _toastTimer!.Stop();
         };
         _toastTimer.Start();
