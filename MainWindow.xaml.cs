@@ -791,13 +791,22 @@ public partial class MainWindow : Window
         delItem.Click += (_, _) =>
         {
             int idx = getIndex();
+            int ri = getRowIndex();
             if (field.Items.Count == 1)
             {
+                // 仅一条：清空文本，并把光标聚焦到被清空的这个框
                 field.Items[0] = "";
                 ta.Text = "";
+                ta.Focus();
+                Keyboard.Focus(ta);
             }
-            else { field.Items.RemoveAt(idx); RemoveItemUi(getRowIndex(), idx); }
-            FocusFirstInput();
+            else
+            {
+                // 多条：删除该框后，删的是第一条则聚焦新的第一条（原下一条），否则聚焦上一条
+                field.Items.RemoveAt(idx);
+                RemoveItemUi(ri, idx);
+                FocusItemInput(ri, idx == 0 ? 0 : idx - 1, caretToEnd: true);
+            }
         };
 
         item.Children.Add(num);
@@ -903,6 +912,13 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             OnActionExecuted(this, ActionMode.Copy);
+            return;
+        }
+        // Ctrl+S：保存到模板（复用按钮逻辑，含重名校验、落盘与 Toast）
+        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            SaveTemplate_Click(this, new RoutedEventArgs());
             return;
         }
         // 模板下拉展开时按 Enter：选中当前项并把焦点移到第一个字段框
@@ -1127,7 +1143,8 @@ public partial class MainWindow : Window
         }, DispatcherPriority.Loaded);
     }
 
-    private void FocusItemInput(int rowIndex, int itemIndex)
+    /// <summary>聚焦到指定字段行的某个内容框。<paramref name="caretToEnd"/> 为 true 时光标落在文本末尾。</summary>
+    private void FocusItemInput(int rowIndex, int itemIndex, bool caretToEnd = false)
     {
         Dispatcher.BeginInvoke(() =>
         {
@@ -1138,8 +1155,10 @@ public partial class MainWindow : Window
             if (itemIndex < items.Count)
             {
                 var ta = items[itemIndex].Children.OfType<AutoGrowTextBox>().FirstOrDefault();
-                ta?.Focus();
+                if (ta == null) return;
+                ta.Focus();
                 Keyboard.Focus(ta);
+                if (caretToEnd) ta.CaretIndex = ta.Text.Length;   // 段尾
             }
         }, DispatcherPriority.Loaded);
     }

@@ -11,6 +11,8 @@
         <SolidColorBrush x:Key="TextBrush" Color="#e5e6f0" />
         <SolidColorBrush x:Key="MutedBrush" Color="#9a9bb5" />
         <SolidColorBrush x:Key="AccentBrush" Color="#7c6cf0" />
+        <!-- 淡紫高亮：与底部"生成并复制"按钮 hover 时的合成色一致（#7c6cf0 上叠 25% 白，约 #9d91f4） -->
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#9d91f4" />
         <SolidColorBrush x:Key="DangerBrush" Color="#e5534b" />
         <SolidColorBrush x:Key="OkBrush" Color="#57ab5a" />
 
@@ -57,13 +59,14 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- 鼠标悬停 / 键盘聚焦：统一淡紫高亮（与"生成并复制"按钮 hover 一致）；按下用主紫加深作反馈 -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BorderBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -106,12 +109,12 @@
             </Setter>
         </Style>
 
-        <!-- 模板下拉框：白底黑字 + 圆角 -->
+        <!-- 模板下拉框：暗底浅字 + 圆角（背景与"新增模板"按钮一致，融入暗色主题） -->
         <Style x:Key="RoundComboBox" TargetType="ComboBox">
             <Setter Property="Height" Value="28" />
-            <Setter Property="Background" Value="White" />
-            <Setter Property="Foreground" Value="Black" />
-            <Setter Property="BorderBrush" Value="#c8c8c8" />
+            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
@@ -136,12 +139,14 @@
                                     <TextBox x:Name="PART_EditableTextBox" Margin="10,0,4,0"
                                              VerticalContentAlignment="Center"
                                              Background="Transparent" BorderThickness="0"
-                                             Foreground="Black" FontSize="12"
+                                             Foreground="{StaticResource TextBrush}" FontSize="12"
+                                             CaretBrush="{StaticResource TextBrush}"
+                                             SelectionBrush="{StaticResource AccentBrush}"
                                              Visibility="Collapsed" IsReadOnly="False"
                                              Focusable="True" />
                                     <Path Grid.Column="1" Margin="0,0,9,0" VerticalAlignment="Center"
                                           IsHitTestVisible="False"
-                                          Data="M 0,0 L 4,4 L 8,0" Stroke="#666666" StrokeThickness="1.5" />
+                                          Data="M 0,0 L 4,4 L 8,0" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.5" />
                                 </Grid>
                             </Border>
                             <ToggleButton x:Name="toggle" Focusable="False" ClickMode="Press"
@@ -155,7 +160,7 @@
                             </ToggleButton>
                             <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                <Border Background="White" BorderBrush="#c8c8c8" BorderThickness="1"
+                                <Border Background="{StaticResource Panel2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                         CornerRadius="5" MinWidth="{TemplateBinding ActualWidth}"
                                         Margin="0,3,0,0" Padding="3">
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
@@ -185,10 +190,10 @@
             </Setter>
         </Style>
 
-        <!-- 下拉列表项：白底黑字 -->
+        <!-- 下拉列表项：暗底浅字（与下拉框一致，保证可读性） -->
         <Style TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="Black" />
-            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -199,11 +204,14 @@
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- 悬停/键盘高亮：略亮一档的灰底，保证浅色文字仍清晰 -->
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#eae6ff" />
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BorderBrush}" />
                             </Trigger>
+                            <!-- 当前选中项：主紫底 + 白字，突出且可读 -->
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="#dcd5ff" />
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="White" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                         </ControlTemplate.Triggers>
