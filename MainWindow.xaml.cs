@@ -570,7 +570,8 @@ public partial class MainWindow : Window
         _current = t;
         _pendingNewTemplate = t;
         RenderFields();
-        FocusFirstInput();
+        // 新模板首字段名默认为空，直接聚焦字段名框并全选，便于立即输入
+        FocusFieldName(0);
         ShowToast("已创建新模板");
     }
 
