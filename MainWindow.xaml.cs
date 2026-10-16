@@ -139,8 +139,8 @@ public partial class MainWindow : Window
         double workWDip = workW / scale;
         double workHDip = workH / scale;
 
-        double w = _settings.WindowWidth > 0 ? _settings.WindowWidth : 470;
-        double h = _settings.WindowHeight > 0 ? _settings.WindowHeight : 700;
+        double w = _settings.WindowWidth > 0 ? _settings.WindowWidth : 365;
+        double h = _settings.WindowHeight > 0 ? _settings.WindowHeight : 600;
         Width = Math.Min(w, workWDip * 0.95);
         Height = Math.Min(h, workHDip * 0.95);
 
@@ -382,6 +382,9 @@ public partial class MainWindow : Window
 
     private static Style? FindIconBtnStyle() =>
         Application.Current.TryFindResource("IconBtn") as Style;
+
+    private static Style? FindIconBtnSoftStyle() =>
+        Application.Current.TryFindResource("IconBtnSoft") as Style;
 
     private static Style? FindFieldInputStyle() =>
         Application.Current.TryFindResource("FieldInput") as Style;
@@ -641,22 +644,65 @@ public partial class MainWindow : Window
         FocusFieldName(rowIndex);
     }
 
-    /// <summary>增量移除指定位置的字段行及其 RowGap。</summary>
+    /// <summary>
+    /// 增量移除指定位置的字段行及其 RowGap。
+    /// 仅剩一个字段时不删除：清空字段名与全部内容框，聚焦字段框。
+    /// 删除后焦点：删非首字段 → 上一字段末条段尾；删首字段 → 下一字段首条段尾。
+    /// </summary>
     private void RemoveFieldAt(int rowIndex)
     {
         if (_current == null) return;
+        if (_current.Fields.Count == 1)
+        {
+            // 仅剩一个字段：清空字段名 + 全部内容框，聚焦字段框（重建 UI 同步全部文本）
+            var f = _current.Fields[0];
+            f.Name = "";
+            for (int j = 0; j < f.Items.Count; j++) f.Items[j] = "";
+            RenderFields();
+            FocusFieldName(0);
+            ShowToast("仅剩一个字段，已清空字段名与内容");
+            return;
+        }
         _current.Fields.RemoveAt(rowIndex);
         int pos = 2 * rowIndex;
         if (pos < FieldHost.Children.Count) FieldHost.Children.RemoveAt(pos); // RowGap
         if (pos < FieldHost.Children.Count) FieldHost.Children.RemoveAt(pos); // Row
         UpdateDup();
+        if (rowIndex == 0)
+            FocusItemInput(0, 0, caretToEnd: true);   // 删首字段 → 下一字段首条段尾
+        else
+            FocusItemInput(rowIndex - 1, _current.Fields[rowIndex - 1].Items.Count - 1, caretToEnd: true); // 上一字段末条段尾
     }
+
+    /// <summary>线性小图标（viewBox 16）：× / ＋，颜色跟随按钮 Foreground（Muted → hover AccentHover）。</summary>
+    private static System.Windows.Shapes.Path MakeGlyph(string data)
+    {
+        var p = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse(data),
+            StrokeThickness = 1.6,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            Width = 12,
+            Height = 12,
+            Stretch = Stretch.None,
+            IsHitTestVisible = false
+        };
+        return p;
+    }
+
+    private const string GlyphX = "M 3,3 L 13,13 M 13,3 L 3,13";
+    private const string GlyphPlus = "M 8,3 L 8,13 M 3,8 L 13,8";
+
+    private static void BindStrokeToForeground(System.Windows.Shapes.Path p, Button btn) =>
+        p.SetBinding(System.Windows.Shapes.Shape.StrokeProperty,
+            new System.Windows.Data.Binding(nameof(Button.Foreground)) { Source = btn });
 
     private UIElement RenderRow(int rowIndex, Field field)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 0) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(127) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 名头行
+        grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); // 内容框列表
 
         // 动态读取本行在 FieldHost.Children 中的实际位置（字段行在偶数索引）
         Func<int> getRowIndex = () =>
@@ -665,34 +711,25 @@ public partial class MainWindow : Window
             return idx >= 0 ? idx / 2 : rowIndex;
         };
 
-        // 左列：× + 字段名（内部垂直居中，整体贴第一条内容框顶端）
-        var left = new StackPanel { Orientation = Orientation.Horizontal, Height = 32, VerticalAlignment = VerticalAlignment.Top };
-        var delRow = new Button
-        {
-            Content = "×",
-            FontSize = 13,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x9a, 0x9b, 0xb5)),
-            VerticalAlignment = VerticalAlignment.Center,
-            IsTabStop = false,
-            ToolTip = "删除该字段"
-        };
-        delRow.Style = FindIconBtnStyle();
-        delRow.Click += (_, _) =>
-        {
-            if (_current == null) return;
-            RemoveFieldAt(getRowIndex());
-        };
+        // 名头行：[*名头 | 20px ×列]，高 24 + 4px 缝（缝归名头 hover 区）
+        var head = new Grid { Height = 28, VerticalAlignment = VerticalAlignment.Top };
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
 
+        // slim 名头：无描边、透明底、紫字、左对齐，右缘=内容框右缘（第 1 列 20px 留给 ×）
         var nameBox = new TextBox
         {
-            Width = 103,
-            Height = 32,
+            Height = 24,
+            VerticalAlignment = VerticalAlignment.Top,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            Foreground = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
+            CaretBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
             FontSize = 13,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(4, 3, 4, 3),
+            Padding = new Thickness(4, 0, 4, 0),
             Text = field.Name
         };
-        nameBox.Style = FindFieldInputStyle();
         WatermarkService.SetWatermark(nameBox, "标题，如“要求”");
         nameBox.TextChanged += (_, _) =>
         {
@@ -700,8 +737,33 @@ public partial class MainWindow : Window
             UpdateDup();
         };
 
-        left.Children.Add(delRow);
-        left.Children.Add(nameBox);
+        // 字段删除 ×：名头行最右端，hover 名头（含 4px 缝）显示；与字段框垂直居中对齐
+        var delRow = new Button
+        {
+            Style = FindIconBtnSoftStyle(),
+            ToolTip = "删除该字段",
+            IsTabStop = false,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(0, 4, 0, 0),
+            Opacity = 0,
+            IsHitTestVisible = false
+        };
+        var delRowIcon = MakeGlyph(GlyphX);
+        BindStrokeToForeground(delRowIcon, delRow);
+        delRow.Content = delRowIcon;
+        delRow.Click += (_, _) =>
+        {
+            if (_current == null) return;
+            RemoveFieldAt(getRowIndex());
+        };
+
+        head.Children.Add(nameBox);
+        Grid.SetColumn(nameBox, 0);
+        head.Children.Add(delRow);
+        Grid.SetColumn(delRow, 1);
+        head.MouseEnter += (_, _) => { delRow.Opacity = 1; delRow.IsHitTestVisible = true; };
+        head.MouseLeave += (_, _) => { delRow.Opacity = 0; delRow.IsHitTestVisible = false; };
 
         // 右列：子项列表
         var right = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -710,9 +772,10 @@ public partial class MainWindow : Window
             right.Children.Add(RenderItem(rowIndex, field, j));
         }
 
-        grid.Children.Add(left);
+        grid.Children.Add(head);
+        Grid.SetRow(head, 0);
         grid.Children.Add(right);
-        Grid.SetColumn(right, 1);
+        Grid.SetRow(right, 1);
         return grid;
     }
 
@@ -723,7 +786,8 @@ public partial class MainWindow : Window
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Margin = new Thickness(0, 0, 0, 6)
         };
-        item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(26) });
+        // 编号列 34px（预留两位数"10."），文本框自适应，× 列 20px
+        item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
         item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
 
@@ -743,8 +807,29 @@ public partial class MainWindow : Window
             Foreground = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
-            Margin = new Thickness(0, 7, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
             TextAlignment = TextAlignment.Right
+        };
+
+        // 内容框插入 ＋：编号左侧（不与编号重叠）、垂直居中；hover 该框与 × 成对显示
+        var addItem = new Button
+        {
+            Style = FindIconBtnSoftStyle(),
+            ToolTip = "在此后插入一条",
+            IsTabStop = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 0),
+            Opacity = 0,
+            IsHitTestVisible = false
+        };
+        var addIcon = MakeGlyph(GlyphPlus);
+        BindStrokeToForeground(addIcon, addItem);
+        addItem.Content = addIcon;
+        addItem.Click += (_, _) =>
+        {
+            if (_current == null) return;
+            InsertItem(getRowIndex(), getIndex() + 1);   // 在该框之后插入（=鼠标化 Enter）
         };
 
         var ta = new AutoGrowTextBox { Text = field.Items[itemIndex] };
@@ -805,18 +890,21 @@ public partial class MainWindow : Window
             RenumberItems(right);
         };
 
+        // 内容框 ×：该行最右端、垂直居中；hover 该框显示（与 + 成对）
         var delItem = new Button
         {
-            Content = "×",
-            FontSize = 12,
-            Foreground = new SolidColorBrush(Color.FromRgb(0x9a, 0x9b, 0xb5)),
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 4, 0, 0),
-            Visibility = Visibility.Visible,
+            Style = FindIconBtnSoftStyle(),
+            ToolTip = "删除此项",
             IsTabStop = false,
-            ToolTip = "删除此项"
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 0, 0),
+            Opacity = 0,
+            IsHitTestVisible = false
         };
-        delItem.Style = FindIconBtnStyle();
+        var delIcon = MakeGlyph(GlyphX);
+        BindStrokeToForeground(delIcon, delItem);
+        delItem.Content = delIcon;
         delItem.Click += (_, _) =>
         {
             int idx = getIndex();
@@ -839,10 +927,24 @@ public partial class MainWindow : Window
         };
 
         item.Children.Add(num);
+        Grid.SetColumn(num, 0);
+        item.Children.Add(addItem);
+        Grid.SetColumn(addItem, 0);
         item.Children.Add(ta);
-        item.Children.Add(delItem);
         Grid.SetColumn(ta, 1);
+        item.Children.Add(delItem);
         Grid.SetColumn(delItem, 2);
+        // hover 该内容框：＋ 与 × 成对显示（opacity 渐变，占位不跳动）
+        item.MouseEnter += (_, _) =>
+        {
+            addItem.Opacity = 1; addItem.IsHitTestVisible = true;
+            delItem.Opacity = 1; delItem.IsHitTestVisible = true;
+        };
+        item.MouseLeave += (_, _) =>
+        {
+            addItem.Opacity = 0; addItem.IsHitTestVisible = false;
+            delItem.Opacity = 0; delItem.IsHitTestVisible = false;
+        };
         return item;
     }
 
@@ -862,7 +964,8 @@ public partial class MainWindow : Window
         _fresh.Add((rowIndex, itemIndex));
 
         var rowGrid = FieldHost.Children.OfType<Grid>().ElementAt(rowIndex);
-        var right = rowGrid.Children.OfType<StackPanel>().ElementAt(1);
+        var right = rowGrid.Children.OfType<StackPanel>().FirstOrDefault();
+        if (right == null) return;
         var newItem = RenderItem(rowIndex, f, itemIndex);
         right.Children.Insert(itemIndex, newItem);
         RenumberItems(right);
@@ -874,7 +977,8 @@ public partial class MainWindow : Window
     private void RemoveItemUi(int rowIndex, int itemIndex)
     {
         var rowGrid = FieldHost.Children.OfType<Grid>().ElementAt(rowIndex);
-        var right = rowGrid.Children.OfType<StackPanel>().ElementAt(1);
+        var right = rowGrid.Children.OfType<StackPanel>().FirstOrDefault();
+        if (right == null) return;
         if (itemIndex < right.Children.Count) right.Children.RemoveAt(itemIndex);
         RenumberItems(right);
     }
@@ -891,6 +995,7 @@ public partial class MainWindow : Window
 
     // ---------------- 字段名重复检测 ----------------
 
+    /// <summary>字段名重复检测：重复的字段名以红字提示（名头常态为紫字、无描边）。</summary>
     private bool UpdateDup()
     {
         bool dup = false;
@@ -902,15 +1007,12 @@ public partial class MainWindow : Window
             if (v.Length == 0) continue;
             if (!seen.Add(v)) dupSet.Add(v);
         }
+        var dupBrush = new SolidColorBrush(Color.FromRgb(0xe5, 0x53, 0x4b));
+        var normalBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0));
         foreach (var tb in EnumerateFieldNameBoxes())
         {
             bool isDup = dupSet.Contains(tb.Text.Trim());
-            tb.BorderBrush = isDup
-                ? new SolidColorBrush(Color.FromRgb(0xe5, 0x53, 0x4b))
-                : new SolidColorBrush(Color.FromRgb(0x3c, 0x3d, 0x57));
-            tb.Foreground = isDup
-                ? new SolidColorBrush(Color.FromRgb(0xe5, 0x53, 0x4b))
-                : new SolidColorBrush(Color.FromRgb(0xe5, 0xe6, 0xf0));
+            tb.Foreground = isDup ? dupBrush : normalBrush;
             if (isDup) dup = true;
         }
         return dup;
@@ -921,12 +1023,10 @@ public partial class MainWindow : Window
         var result = new List<TextBox>();
         foreach (var child in FieldHost.Children)
         {
-            if (child is Grid row && row.Children.Count > 0 && row.Children[0] is StackPanel left)
+            if (child is Grid row && row.Children.Count > 0 && row.Children[0] is Grid head)
             {
-                foreach (var c in left.Children)
-                {
-                    if (c is TextBox tb) result.Add(tb);
-                }
+                var tb = head.Children.OfType<TextBox>().FirstOrDefault();
+                if (tb != null) result.Add(tb);
             }
         }
         return result;
@@ -1150,7 +1250,7 @@ public partial class MainWindow : Window
         {
             var first = FieldHost.Children.OfType<Grid>().FirstOrDefault();
             if (first == null) return;
-            var right = first.Children.Count > 1 ? first.Children[1] as StackPanel : null;
+            var right = first.Children.OfType<StackPanel>().FirstOrDefault();
             var ta = right?.Children.OfType<Grid>().FirstOrDefault()?.Children.OfType<AutoGrowTextBox>().FirstOrDefault();
             ta?.Focus();
             Keyboard.Focus(ta);
@@ -1162,13 +1262,12 @@ public partial class MainWindow : Window
         Dispatcher.BeginInvoke(() =>
         {
             var rows = FieldHost.Children.OfType<Grid>().ToList();
-            if (rowIndex < rows.Count && rows[rowIndex].Children[0] is StackPanel left)
-            {
-                var tb = left.Children.OfType<TextBox>().FirstOrDefault();
-                tb?.Focus();
-                Keyboard.Focus(tb);
-                tb?.SelectAll();
-            }
+            if (rowIndex >= rows.Count) return;
+            var head = rows[rowIndex].Children.OfType<Grid>().FirstOrDefault();
+            var tb = head?.Children.OfType<TextBox>().FirstOrDefault();
+            tb?.Focus();
+            Keyboard.Focus(tb);
+            tb?.SelectAll();
         }, DispatcherPriority.Loaded);
     }
 
@@ -1179,7 +1278,8 @@ public partial class MainWindow : Window
         {
             var rows = FieldHost.Children.OfType<Grid>().ToList();
             if (rowIndex >= rows.Count) return;
-            if (rows[rowIndex].Children[1] is not StackPanel right) return;
+            var right = rows[rowIndex].Children.OfType<StackPanel>().FirstOrDefault();
+            if (right == null) return;
             var items = right.Children.OfType<Grid>().ToList();
             if (itemIndex < items.Count)
             {

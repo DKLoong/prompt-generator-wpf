@@ -5,7 +5,10 @@ using System.Windows.Shapes;
 
 namespace PromptGenerator.Controls;
 
-/// <summary>行间插入条：鼠标移入时显示"+"，点击在当前位置插入新字段行。</summary>
+/// <summary>
+/// 字段间隙插入条：高 10px，鼠标移入时以 opacity 渐变显示"+"（默认 opacity=0 保留占位，不跳动），
+/// 点击在当前位置插入新字段行。位置与内容框插入"+"同列（左对齐）。
+/// </summary>
 public class RowGap : UserControl
 {
     private readonly Button _addBtn;
@@ -14,34 +17,37 @@ public class RowGap : UserControl
 
     public RowGap()
     {
-        Height = 20;
+        Height = 10;
         Background = Brushes.Transparent;
 
         _addBtn = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(4, 0, 0, 0),
+            Margin = new Thickness(0, 0, 0, 0),
             Padding = new Thickness(0),
-            Visibility = Visibility.Collapsed,
+            VerticalAlignment = VerticalAlignment.Center,
             IsTabStop = false,
-            ToolTip = "在此插入字段"
+            ToolTip = "在此插入字段",
+            Opacity = 0,
+            IsHitTestVisible = false
         };
-        if (Application.Current.TryFindResource("IconBtn") is Style s) _addBtn.Style = s;
-        // 用 Path 画十字，保证水平垂直绝对居中（字符"+"受字体基线影响会偏上）
+        if (Application.Current.TryFindResource("IconBtnSoft") is Style s) _addBtn.Style = s;
+        // 线性十字，颜色跟随按钮 Foreground（Muted → hover AccentHover），与内容框"+"同尺寸（12×12）
         var cross = new Path
         {
-            Data = Geometry.Parse("M 4.5,10 L 15.5,10 M 10,4.5 L 10,15.5"),
-            Stroke = Brushes.White,
-            StrokeThickness = 2,
+            Data = Geometry.Parse("M 8,3 L 8,13 M 3,8 L 13,8"),
+            StrokeThickness = 1.6,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
-            Width = 20,
-            Height = 20,
+            Width = 12,
+            Height = 12,
             Stretch = Stretch.None,
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center,
             IsHitTestVisible = false
         };
+        cross.SetBinding(Shape.StrokeProperty,
+            new System.Windows.Data.Binding(nameof(Button.Foreground)) { Source = _addBtn });
         _addBtn.Content = cross;
         _addBtn.Click += (_, _) => AddClicked?.Invoke(this, EventArgs.Empty);
 
@@ -49,7 +55,7 @@ public class RowGap : UserControl
         grid.Children.Add(_addBtn);
         Content = grid;
 
-        MouseEnter += (_, _) => _addBtn.Visibility = Visibility.Visible;
-        MouseLeave += (_, _) => _addBtn.Visibility = Visibility.Collapsed;
+        MouseEnter += (_, _) => { _addBtn.Opacity = 1; _addBtn.IsHitTestVisible = true; };
+        MouseLeave += (_, _) => { _addBtn.Opacity = 0; _addBtn.IsHitTestVisible = false; };
     }
 }
