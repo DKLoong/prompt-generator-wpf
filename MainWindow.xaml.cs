@@ -86,6 +86,14 @@ public partial class MainWindow : Window
             WindowState = WindowState.Normal;
             Show();
             Activate();
+            // 贴边收起状态下唤起：先与鼠标悬停触发的 Expand() 走同一路径——
+            // 把窗口移回收起前的正常位置、并将光标吸进标题栏。
+            // 否则 ComboBox 下拉框会基于屏幕外的收起坐标计算 Popup 位置，导致下拉框错位；
+            // 后续 Expand() 移动窗口后 Popup 也不会自动重新定位。
+            if (_docked && !_expanded)
+            {
+                Expand();
+            }
             // 唤起后自动展开模板列表，方向键选择，Enter 进入
             Dispatcher.BeginInvoke(new Action(() =>
             {
