@@ -691,8 +691,10 @@ public partial class MainWindow : Window
         return p;
     }
 
-    private const string GlyphX = "M 3,3 L 13,13 M 13,3 L 3,13";
-    private const string GlyphPlus = "M 8,3 L 8,13 M 3,8 L 13,8";
+    // 数据坐标以 1~11 中心对称：Stretch=None 时布局盒取几何 bounds 最大值，
+    // 用 [1,11] 使视觉中心与按钮（16×16）中心重合，线条完整显示不贴边。
+    private const string GlyphX = "M 1,1 L 11,11 M 11,1 L 1,11";
+    private const string GlyphPlus = "M 6,1 L 6,11 M 1,6 L 11,6";
 
     private static void BindStrokeToForeground(System.Windows.Shapes.Path p, Button btn) =>
         p.SetBinding(System.Windows.Shapes.Shape.StrokeProperty,
@@ -712,7 +714,9 @@ public partial class MainWindow : Window
         };
 
         // 名头行：[*名头 | 20px ×列]，高 24 + 4px 缝（缝归名头 hover 区）
-        var head = new Grid { Height = 28, VerticalAlignment = VerticalAlignment.Top };
+        // Background=Transparent：让名头整个矩形可命中，鼠标经缝/空隙移向 × 时不脱离 head 子树，
+        // 避免 ghost MouseLeave 把 × 隐藏后无法恢复（根治 hover 时 × 不可选取/点击）。
+        var head = new Grid { Height = 28, VerticalAlignment = VerticalAlignment.Top, Background = Brushes.Transparent };
         head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
 
@@ -725,7 +729,9 @@ public partial class MainWindow : Window
             BorderThickness = new Thickness(0),
             Foreground = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
             CaretBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
-            FontSize = 13,
+            SelectionBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
+            FontSize = 15,
+            FontWeight = FontWeights.Bold,
             VerticalContentAlignment = VerticalAlignment.Center,
             Padding = new Thickness(4, 0, 4, 0),
             Text = field.Name
@@ -784,7 +790,11 @@ public partial class MainWindow : Window
         var item = new Grid {
             VerticalAlignment = VerticalAlignment.Top,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Margin = new Thickness(0, 0, 0, 6)
+            Margin = new Thickness(0, 0, 0, 6),
+            // Background=Transparent：让本行整个矩形可命中。否则鼠标从内容框移向 ×
+            // 经过按钮两侧 4px 空隙时命中测试脱离 item 子树，触发 ghost MouseLeave
+            // 把 × 隐藏后无法恢复（× 侧无兜底元素，+ 侧有编号 TextBlock 故可恢复）。
+            Background = Brushes.Transparent
         };
         // 编号列 34px（预留两位数"10."），文本框自适应，× 列 20px
         item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });

@@ -6,7 +6,7 @@ using System.Windows.Shapes;
 namespace PromptGenerator.Controls;
 
 /// <summary>
-/// 字段间隙插入条：高 10px，鼠标移入时以 opacity 渐变显示"+"（默认 opacity=0 保留占位，不跳动），
+/// 字段间隙插入条：高 8px，鼠标移入时以 opacity 渐变显示"+"（默认 opacity=0 保留占位，不跳动），
 /// 点击在当前位置插入新字段行。位置与内容框插入"+"同列（左对齐）。
 /// </summary>
 public class RowGap : UserControl
@@ -17,7 +17,7 @@ public class RowGap : UserControl
 
     public RowGap()
     {
-        Height = 10;
+        Height = 8;
         Background = Brushes.Transparent;
 
         _addBtn = new Button
@@ -33,9 +33,10 @@ public class RowGap : UserControl
         };
         if (Application.Current.TryFindResource("IconBtnSoft") is Style s) _addBtn.Style = s;
         // 线性十字，颜色跟随按钮 Foreground（Muted → hover AccentHover），与内容框"+"同尺寸（12×12）
+        // 数据坐标 1~11 中心对称：Stretch=None 布局盒=几何 bounds 最大值，视觉中心与按钮中心重合
         var cross = new Path
         {
-            Data = Geometry.Parse("M 8,3 L 8,13 M 3,8 L 13,8"),
+            Data = Geometry.Parse("M 6,1 L 6,11 M 1,6 L 11,6"),
             StrokeThickness = 1.6,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
