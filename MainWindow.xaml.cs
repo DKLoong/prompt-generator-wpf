@@ -1334,7 +1334,6 @@ public partial class MainWindow : Window
             var tb = head?.Children.OfType<TextBox>().FirstOrDefault();
             tb?.Focus();
             Keyboard.Focus(tb);
-            tb?.SelectAll();
         }, DispatcherPriority.Loaded);
     }
 
