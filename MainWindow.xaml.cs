@@ -471,6 +471,8 @@ public partial class MainWindow : Window
             else if (IsBlankNewTemplate(_current))
             {
                 _data.Templates.Remove(_current);
+                // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
+                if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
                 try { _store.Save(_data); } catch { }
             }
         }
