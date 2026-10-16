@@ -6,8 +6,10 @@ using System.Windows.Shapes;
 namespace PromptGenerator.Controls;
 
 /// <summary>
-/// 字段间隙插入条：高 8px，鼠标移入时以 opacity 渐变显示"+"（默认 opacity=0 保留占位，不跳动），
+/// 字段间隙插入条：视觉间隙 8px，鼠标移入时以 opacity 渐变显示"+"（默认 opacity=0 保留占位，不跳动），
 /// 点击在当前位置插入新字段行。位置与内容框插入"+"同列（左对齐）。
+/// 布局高度 16px 以完整容纳 16px 按钮（按钮垂直居中于 8px 间隙会溢出，渲染层裁剪导致 + 图标上下截断），
+/// 通过负 Margin 上下各 -4 把视觉间隙压回 8px。
 /// </summary>
 public class RowGap : UserControl
 {
@@ -17,7 +19,8 @@ public class RowGap : UserControl
 
     public RowGap()
     {
-        Height = 8;
+        Height = 16;
+        Margin = new Thickness(0, -4, 0, -4);
         Background = Brushes.Transparent;
 
         _addBtn = new Button
