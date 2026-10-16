@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -336,6 +337,23 @@ public partial class MainWindow : Window
             // 展开态：光标不在窗口（含 ±8 容差）内，连续超过 300ms 才收回，防边界抖动
             bool inWindow = px >= Left - 8 && px <= Left + Width + 8 &&
                             py >= Top - 8 && py <= Top + Height + 8;
+            // 下拉框弹出时，把 Popup 实际占据的屏幕矩形也算作窗口内：
+            // 否则鼠标移到下拉选项上选择模板时，会被误判为离开窗口，300ms 后误触发 Collapse。
+            if (!inWindow && TemplateBox.IsDropDownOpen)
+            {
+                if (TemplateBox.Template?.FindName("PART_Popup", TemplateBox) is Popup popup
+                    && popup.Child is FrameworkElement child && child.IsVisible)
+                {
+                    var pt = child.PointToScreen(new Point(0, 0));
+                    double cpx = pt.X / dpi.DpiScaleX;
+                    double cpy = pt.Y / dpi.DpiScaleY;
+                    if (px >= cpx - 4 && px <= cpx + child.ActualWidth + 4 &&
+                        py >= cpy - 4 && py <= cpy + child.ActualHeight + 4)
+                    {
+                        inWindow = true;
+                    }
+                }
+            }
             if (!inWindow)
             {
                 if (_leftAt == DateTime.MinValue) _leftAt = DateTime.Now;
