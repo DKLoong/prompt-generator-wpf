@@ -40,6 +40,9 @@ public partial class MainWindow : Window
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
+        // 所有按钮点击后自动清除键盘焦点，避免 IsKeyboardFocused 高亮残留（统一覆盖新增/删除/保存等）
+        EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent,
+            new RoutedEventHandler((_, _) => Keyboard.ClearFocus()));
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照
