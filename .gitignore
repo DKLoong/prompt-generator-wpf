@@ -28,6 +28,9 @@ dpi-log.txt
 pad-log.txt
 debug.log
 
+# Prototype HTML (dev artifact)
+prototype/
+
 # OS
 Thumbs.db
 .DS_Store
