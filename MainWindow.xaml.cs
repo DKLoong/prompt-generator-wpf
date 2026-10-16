@@ -1102,6 +1102,20 @@ public partial class MainWindow : Window
             SaveTemplate_Click(this, new RoutedEventArgs());
             return;
         }
+        // 模板下拉展开时方向键循环导航：末项按下键回到首项，首项按上键跳到末项
+        if (TemplateBox.IsDropDownOpen && TemplateBox.Items.Count > 0)
+        {
+            if (e.Key == Key.Down && TemplateBox.SelectedIndex >= TemplateBox.Items.Count - 1)
+            {
+                TemplateBox.SelectedIndex = 0;
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Up && TemplateBox.SelectedIndex <= 0)
+            {
+                TemplateBox.SelectedIndex = TemplateBox.Items.Count - 1;
+                e.Handled = true;
+            }
+        }
         // 模板下拉展开时按 Enter：选中当前项并把焦点移到第一个字段框
         if (e.Key == Key.Enter && TemplateBox.IsDropDownOpen)
         {
