@@ -29,6 +29,8 @@ public partial class MainWindow : Window
     private HotkeyManager? _hotkey;
     /// <summary>已保存快照（key=Template.Id）。切模板时未保存的编辑从快照恢复。</summary>
     private readonly Dictionary<string, Template> _savedSnapshots = new();
+    /// <summary>未保存的新模板（"新增模板"创建后尚未保存；非空时禁止再新增）。</summary>
+    private Template? _pendingNewTemplate;
 
     public MainWindow()
     {
@@ -522,6 +524,11 @@ public partial class MainWindow : Window
 
     private void NewTemplate_Click(object sender, RoutedEventArgs e)
     {
+        if (_pendingNewTemplate != null)
+        {
+            ShowToast("当前存在未保存的模板，请保存后再新增", false);
+            return;
+        }
         var t = new Template { Name = "新模板" };
         t.Fields.Add(new Field { Name = "", Items = { "" } });
         _data.Templates.Add(t);
@@ -529,6 +536,7 @@ public partial class MainWindow : Window
         TemplateBox.SelectedItem = t;
         _loadingTemplates = false;
         _current = t;
+        _pendingNewTemplate = t;
         RenderFields();
         FocusFirstInput();
         ShowToast("已创建新模板");
@@ -545,6 +553,7 @@ public partial class MainWindow : Window
         var current = _current;
         _data.Templates.Remove(current);
         _savedSnapshots.Remove(current.Id);
+        if (_pendingNewTemplate == current) _pendingNewTemplate = null;   // 未保存的新模板被删除
         _current = null;
         try { _store.Save(_data); } catch { }
         RefreshTemplateBox();
@@ -574,6 +583,7 @@ public partial class MainWindow : Window
         {
             _store.Save(_data);
             SaveSnapshot(_current);   // 更新已保存快照
+            _pendingNewTemplate = null;   // 已保存，允许再次新增
             ShowToast("已保存到模板");
         }
         catch (Exception ex)
