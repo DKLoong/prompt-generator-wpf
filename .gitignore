@@ -4,6 +4,7 @@ obj/
 *.user
 *.suo
 .vs/
+.trae-html-share-packages/
 
 # Rider / VS Code
 .idea/
