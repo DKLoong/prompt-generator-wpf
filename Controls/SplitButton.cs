@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace PromptGenerator.Controls;
@@ -47,7 +48,11 @@ public class SplitButton : UserControl
             FocusVisualStyle = null,
             Template = BuildButtonTemplate(new CornerRadius(6, 0, 0, 6))
         };
-        _leftBtn.Click += (_, _) => Executed?.Invoke(this, _mode);
+        _leftBtn.Click += (_, _) =>
+        {
+            Keyboard.ClearFocus();   // 点击后立即失焦，避免 IsKeyboardFocused 高亮残留
+            Executed?.Invoke(this, _mode);
+        };
 
         _rightBtn = new Button
         {
