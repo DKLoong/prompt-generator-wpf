@@ -218,9 +218,11 @@
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- 悬停/键盘高亮：略亮一档的灰底，保证浅色文字仍清晰 -->
+                            <!-- 悬停/键盘高亮：主紫底 + 白字（与选中同视觉——鼠标聚焦/方向键导航即明确"即将打开"的候选项） -->
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BorderBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="White" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <!-- 当前选中项：主紫底 + 白字，突出且可读 -->
                             <Trigger Property="IsSelected" Value="True">

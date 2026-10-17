@@ -52,6 +52,10 @@ public partial class MainWindow : Window
     /// <summary>本次文本变化是否源于用户键入（PreviewTextInput 置位，TextChanged 过滤分支消费）。
     /// 为 true 时进入编辑态（置 null + SetCurrentValue 恢复过滤词）；方向键导航（false）保留 SelectedItem，维持候选项高亮。</summary>
     private bool _userTyping;
+
+    /// <summary>本次选中变化是否由鼠标点击候选项引发（窗口级 PreviewMouseLeftButtonDown 置位，SelectionChanged 消费）。
+    /// 点击=确认选择（应切换模板）；键盘方向键导航经 _loadingTemplates 短路，不经此分支。</summary>
+    private bool _mousePick;
     /// <summary>模板下拉的集合视图：ItemsSource 常驻此视图，过滤只切换 Filter 谓词，
     /// 避免重建 ItemsSource 破坏 IsEditable 下拉的输入与选中态（首字符被吞、方向键高亮丢失的根因）。</summary>
     private ICollectionView? _templatesView;
@@ -600,7 +604,24 @@ public partial class MainWindow : Window
     {
         if (_loadingTemplates) return;
         if (_renaming) return;   // 改名态：编辑文本引发的选中变化不切换模板、不恢复快照、不重渲染字段
-        if (_filterActive) return;   // 过滤态：选中变化只是"高亮候选"，Enter 确认时才切换模板
+        // 过滤态：键盘方向键导航的选中只是"高亮候选"（Enter 确认才切换）；鼠标点击候选项（_mousePick）
+        // 是确认选择，放行切换。放行时退出过滤态、回填选中名并收起下拉，下方统一走离开清理 + LoadCurrentTemplate。
+        bool pick = _mousePick;
+        _mousePick = false;
+        if (_filterActive && !pick) return;
+        if (_filterActive)
+        {
+            _filterActive = false;
+            _filterResetPending = false;
+            _userTyping = false;
+            _loadingTemplates = true;
+            if (TemplateBox.SelectedItem is Template sel)
+            {
+                TemplateBox.Text = sel.Name;   // 回填选中模板名（原生已同步；短路使后续 TextChanged 不重入过滤分支）
+                TemplateBox.IsDropDownOpen = false;
+            }
+            _loadingTemplates = false;
+        }
         Logging.Debug($"SelChanged sel={(TemplateBox.SelectedItem as Template)?.Name} filter={_filterActive} loading={_loadingTemplates}");
         // 离开当前模板前：
         // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
@@ -855,6 +876,21 @@ public partial class MainWindow : Window
         return false;
     }
 
+    /// <summary>命中测试：点击点是否落在下拉列表项（Popup 内 ComboBoxItem）上——点击候选项=确认选择。</summary>
+    private static bool IsHitOnComboBoxItem(DependencyObject? source)
+    {
+        for (DependencyObject? d = source; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d is ComboBoxItem) return true;
+        return false;
+    }
+
+    /// <summary>窗口级隧道点击检测：点击落在下拉候选项上时置位 _mousePick，
+    /// 使 SelectionChanged 放行（点击=确认选择，切换模板）；键盘方向键导航不经此路径。</summary>
+    private void MainWindow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _mousePick = IsHitOnComboBoxItem(e.OriginalSource as DependencyObject);
+    }
+
     /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。
     /// 注意：焦点必须留在编辑框内（tb.Focus），不能再 Keyboard.Focus 回 ComboBox——那会触发失焦确认立即退出改名态。</summary>
     private void RenameTemplate_Click(object sender, RoutedEventArgs e)
@@ -870,11 +906,38 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>失焦时若处于改名态则确认改名（焦点已移走，无需再安排落点）。</summary>
+    /// <summary>失焦：改名态→确认改名（焦点已移走，无需再安排落点）；
+    /// 过滤态/文本与当前模板不一致且焦点离开模板框（点外部控件/键盘 Tab）→恢复显示当前模板名并取消过滤。</summary>
     private void TemplateBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         Logging.Debug($"LostFocus renaming={_renaming} newFocus={e.NewFocus?.GetType().Name}");
-        if (_renaming) TryConfirmRename();
+        if (_renaming)
+        {
+            TryConfirmRename();
+            return;
+        }
+        // 焦点离开模板框（到外部控件）：过滤词/空文本不再需要，恢复当前模板名（用户预期：清空后失焦恢复）
+        if (!IsWithinTemplateBox(e.NewFocus as DependencyObject)
+            && (_filterActive || !string.Equals(TemplateBox.Text?.Trim(), _current?.Name?.Trim(), StringComparison.Ordinal)))
+        {
+            _userTyping = false;
+            _filterResetPending = false;
+            _filterActive = false;
+            _loadingTemplates = true;
+            TemplateBox.Text = _current?.Name ?? "";
+            if (TemplateBox.SelectedItem != _current)
+                TemplateBox.SelectedItem = _current;
+            _loadingTemplates = false;
+            RefreshFilteredList();
+        }
+    }
+
+    /// <summary>判断焦点目标是否仍在模板框（或其模板内子元素）内：点箭头/文本区等内部操作不触发失焦恢复。</summary>
+    private bool IsWithinTemplateBox(DependencyObject? node)
+    {
+        for (DependencyObject? d = node; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d == TemplateBox) return true;
+        return false;
     }
 
     /// <summary>确认改名：非空、不重名才写回并退出改名态；空名还原退出；重名提示并保持改名态。</summary>
@@ -1509,6 +1572,23 @@ public partial class MainWindow : Window
         {
             e.Handled = true;
             SaveTemplate_Click(this, new RoutedEventArgs());
+            return;
+        }
+        // 过滤态 + 下拉展开：接管方向键导航。编辑态 SelectedItem=null 时 ComboBox 原生键盘导航被 TextBox
+        // 吞掉（↓ 无响应）；或导航文本同步被免疫误判恢复为过滤词。此处显式在过滤视图中移动选中，
+        // _loadingTemplates 短路 TextChanged/SelectionChanged，免疫不介入；保持候选项高亮与 Enter 确认语义。
+        if (_filterActive && !_renaming && TemplateBox.IsDropDownOpen && (e.Key == Key.Down || e.Key == Key.Up))
+        {
+            int count = _templatesView?.Cast<object>().Count() ?? 0;
+            if (count == 0) { e.Handled = true; return; }
+            int idx = TemplateBox.SelectedIndex;   // 过滤视图内索引（Items=过滤后的视图）
+            int next = e.Key == Key.Down
+                ? (idx < 0 ? 0 : (idx + 1) % count)
+                : (idx < 0 ? count - 1 : (idx - 1 + count) % count);
+            _loadingTemplates = true;
+            TemplateBox.SelectedIndex = next;
+            _loadingTemplates = false;
+            e.Handled = true;
             return;
         }
         // 模板下拉展开时方向键循环导航：末项按下键回到首项，首项按上键跳到末项

@@ -9,7 +9,8 @@
         Width="365" Height="600" MinWidth="365" MinHeight="430"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResize" WindowStartupLocation="Manual" Topmost="True"
-        ShowInTaskbar="True" Closing="Window_Closing">
+        ShowInTaskbar="True" Closing="Window_Closing"
+        PreviewMouseLeftButtonDown="MainWindow_PreviewMouseLeftButtonDown">
     <shell:WindowChrome.WindowChrome>
         <!-- 无边框窗口：6px 隐藏缩放边框，CaptionHeight=0（拖动用自绘 DragMove） -->
         <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
