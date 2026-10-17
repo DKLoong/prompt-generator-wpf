@@ -293,6 +293,45 @@
             </Setter>
         </Style>
 
+        <!-- 模板行图标按钮（重命名/新增/保存/删除）：26x26 圆角矩形，与 ActionBtn 同底同高亮；
+             内容为线性图标，颜色跟随 Foreground（Muted→悬停/键盘聚焦 Text→按下 White） -->
+        <Style x:Key="IconActionBtn" TargetType="Button">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" CornerRadius="5" Background="{TemplateBinding Background}"
+                                Padding="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- 悬停 / 键盘聚焦：统一淡紫底 + 图标提亮（与 ActionBtn 高亮体系一致） -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- 滚动条 -->
         <Style TargetType="ScrollBar">
             <Setter Property="Background" Value="Transparent" />

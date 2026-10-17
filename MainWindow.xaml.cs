@@ -759,24 +759,29 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>单击：全选现有文本，键入即覆盖（不改动展开行为）；双击：进入改名态——收起下拉、文本预填当前模板名并全选。</summary>
+    /// <summary>单击：全选现有文本，键入即覆盖（不改动展开行为）。改名由"重命名"按钮显式触发。</summary>
     private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 1)
         {
             if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
                 tb.SelectAll();
-            return;
         }
-        if (e.ClickCount == 2 && !_renaming && _current != null)
+    }
+
+    /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。</summary>
+    private void RenameTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_current == null) return;
+        _renaming = true;
+        TemplateBox.IsDropDownOpen = false;
+        TemplateBox.Text = _current.Name ?? "";
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
-            _renaming = true;
-            TemplateBox.IsDropDownOpen = false;
-            TemplateBox.Text = _current.Name ?? "";
-            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
-                tb.SelectAll();
-            e.Handled = true;
+            tb.Focus();
+            tb.SelectAll();
         }
+        Keyboard.Focus(TemplateBox);
     }
 
     /// <summary>失焦时若处于改名态则确认改名（焦点已移走，无需再安排落点）。</summary>
