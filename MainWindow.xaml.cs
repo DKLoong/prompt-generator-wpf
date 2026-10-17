@@ -582,6 +582,7 @@ public partial class MainWindow : Window
     {
         if (_loadingTemplates) return;
         if (_renaming) return;   // 改名态：编辑文本引发的选中变化不切换模板、不恢复快照、不重渲染字段
+        if (_filterActive) return;   // 过滤态：选中变化只是"高亮候选"，Enter 确认时才切换模板
         // 离开当前模板前：
         // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
         //   除当前模板外，也清理列表中残留的其他历史编辑模板——例如：编辑历史A后未切走
@@ -706,23 +707,56 @@ public partial class MainWindow : Window
         RefreshFilteredList();
     }
 
-    /// <summary>按当前过滤词切换视图过滤：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；只改 Filter 谓词，不重建 ItemsSource。</summary>
+    /// <summary>字符输入前（隧道阶段）先进入过滤态并展开下拉，使随后由视图/ComboBox 触发的选中变化被过滤态屏蔽，避免输入即自动切换模板。</summary>
+    private void TemplateBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
+    {
+        if (_renaming || _current == null) return;
+        _filterActive = true;
+        if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
+    }
+
+    /// <summary>按当前过滤词切换视图过滤：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；只改 Filter 谓词，不重建 ItemsSource。
+    /// 文本属于"用户输入的新词"时复位选中项与文本，防止视图 CurrentItem 驱动 ComboBox 选中/回写（输入被替换为匹配项名）；
+    /// 文本等于当前选中项名（方向键同步）时保留选中，保证方向键选取/高亮不被破坏。</summary>
     private void RefreshFilteredList()
     {
         if (_templatesView == null) return;
+        string keepText = TemplateBox.Text;
         _templatesView.Filter = _filterActive
             ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
             : null;
         _templatesView.Refresh();
+        if (_filterActive)
+        {
+            var sel = TemplateBox.SelectedItem as Template;
+            bool textIsSelection = sel != null
+                && string.Equals(TemplateBox.Text.Trim(), sel.Name?.Trim(), StringComparison.Ordinal);
+            if (!textIsSelection)
+            {
+                _loadingTemplates = true;
+                TemplateBox.SelectedItem = null;
+                TemplateBox.Text = keepText;
+                _loadingTemplates = false;
+            }
+        }
     }
 
-    /// <summary>清空过滤：回填当前选中模板名并恢复全量列表（Esc 第一级）。</summary>
+    /// <summary>清空过滤：回填当前模板名并恢复全量列表（Esc 第一级）。</summary>
     private void ClearFilter()
     {
         if (!_filterActive) return;
         _filterActive = false;
-        TemplateBox.Text = (TemplateBox.SelectedItem as Template)?.Name ?? _current?.Name ?? "";
+        _loadingTemplates = true;
+        TemplateBox.Text = _current?.Name ?? "";
+        _loadingTemplates = false;
         RefreshFilteredList();
+        // 过滤态方向键可能已选中候选：Esc 后恢复选中指向当前模板
+        if (_current != null && TemplateBox.SelectedItem != _current)
+        {
+            _loadingTemplates = true;
+            TemplateBox.SelectedItem = _current;
+            _loadingTemplates = false;
+        }
     }
 
     /// <summary>单击：全选现有文本，键入即覆盖（不改动展开行为）；双击：进入改名态——收起下拉、文本预填当前模板名并全选。</summary>
@@ -1384,13 +1418,13 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
-        // Enter：改名态→确认改名并焦点到第一个字段框；展开态→选中当前项、回填文本、收起、焦点到第一个字段框；过滤无匹配→不动作
+        // Enter：改名态→确认改名并焦点到第一个字段名框；展开态→选中当前项、回填文本、收起、焦点到第一个内容框；过滤无匹配→不动作
         if (e.Key == Key.Enter)
         {
             if (_renaming)
             {
                 e.Handled = true;
-                if (TryConfirmRename()) FocusFirstInput();
+                if (TryConfirmRename()) FocusFieldName(0);   // 改名确认后进入该模板第一个字段框
                 return;   // 重名时留在改名态
             }
             if (TemplateBox.IsDropDownOpen)
@@ -1403,9 +1437,16 @@ public partial class MainWindow : Window
                 TemplateBox.IsDropDownOpen = false;
                 if (_filterActive && TemplateBox.SelectedItem is Template sel)
                 {
+                    // 过滤态确认：切换模板由本处显式完成（过滤态 SelectionChanged 已屏蔽自动切换）
                     _filterActive = false;
+                    _loadingTemplates = true;
                     TemplateBox.Text = sel.Name;   // 回填选中模板名
+                    _loadingTemplates = false;
                     RefreshFilteredList();          // 恢复全量列表（含置顶顺序）
+                    _current = sel;
+                    RenderFields();
+                    FocusFirstInput();
+                    return;
                 }
                 FocusFirstInput();
             }

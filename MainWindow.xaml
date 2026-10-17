@@ -102,8 +102,10 @@
                 <ComboBox x:Name="TemplateBox" Height="28" Margin="0,0,8,0"
                           Style="{StaticResource RoundComboBox}"
                           IsEditable="True" IsTextSearchEnabled="False"
+                          IsSynchronizedWithCurrentItem="False"
                           TextBoxBase.TextChanged="TemplateBox_TextChanged"
                           SelectionChanged="TemplateBox_SelectionChanged"
+                          PreviewTextInput="TemplateBox_PreviewTextInput"
                           PreviewMouseLeftButtonDown="TemplateBox_PreviewMouseLeftButtonDown"
                           LostKeyboardFocus="TemplateBox_LostKeyboardFocus"
                           VerticalContentAlignment="Center" />
