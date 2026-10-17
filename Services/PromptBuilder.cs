@@ -23,7 +23,6 @@ public static class PromptBuilder
     public static string? Build(IEnumerable<Field> fields)
     {
         var sb = new StringBuilder();
-        bool first = true;
         foreach (var field in fields)
         {
             if (string.IsNullOrWhiteSpace(field.Name)) continue;
@@ -33,10 +32,8 @@ public static class PromptBuilder
                 .ToList();
             if (items.Count == 0) continue;
 
-            // 标准 Markdown：## 字段名：换行，每条编号项单独一行
-            if (!first) sb.AppendLine();
+            // 标准 Markdown：## 字段名：换行，每条编号项单独一行；字段间不留空行（TUI 友好）
             sb.Append("## ").Append(field.Name.Trim()).Append('：').AppendLine();
-            first = false;
 
             for (int i = 0; i < items.Count; i++)
             {
