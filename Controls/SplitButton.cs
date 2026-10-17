@@ -50,7 +50,7 @@ public class SplitButton : UserControl
         };
         _leftBtn.Click += (_, _) =>
         {
-            Keyboard.ClearFocus();   // 点击后立即失焦，避免 IsKeyboardFocused 高亮残留
+            // 焦点策略统一由 MainWindow 的 Button 类处理器管理：鼠标点击失焦、键盘（Enter/Space）点击保留焦点
             Executed?.Invoke(this, _mode);
         };
 

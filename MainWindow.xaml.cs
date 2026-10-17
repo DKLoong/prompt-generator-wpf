@@ -38,6 +38,8 @@ public partial class MainWindow : Window
     private string? _lastCopiedPrompt;
     /// <summary>上次"生成并提交"成功的提示词；内容未改动时重复提交将被拦截。</summary>
     private string? _lastSubmittedPrompt;
+    /// <summary>键盘（Enter/Space）即将触发点击的按钮。Click 时据此区分键盘/鼠标触发：键盘触发保留焦点，鼠标触发清除焦点。</summary>
+    private readonly HashSet<Button> _keyboardClickTargets = new();
 
     public MainWindow()
     {
@@ -47,9 +49,26 @@ public partial class MainWindow : Window
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
-        // 所有按钮点击后自动清除键盘焦点，避免 IsKeyboardFocused 高亮残留（统一覆盖新增/删除/保存等）
+        // 按钮点击后的焦点策略（统一覆盖新增/删除/保存等）：
+        // 键盘（Enter/Space）触发的点击保留焦点，保证键盘导航连续（Tab 后 Enter，焦点仍在该按钮）；
+        // 鼠标触发的点击清除键盘焦点，避免 IsKeyboardFocused 高亮残留（与既有鼠标行为完全一致）。
+        // 判定方式：PreviewKeyDown 预先标记键盘激活（Enter 在 KeyDown、Space 在 KeyUp 触发 Click），
+        // PreviewMouseLeftButtonDown 使标记失效，避免 Space 按住期间穿插鼠标点击时误判为键盘触发。
+        EventManager.RegisterClassHandler(typeof(Button), Button.PreviewKeyDownEvent,
+            new KeyEventHandler((sender, e) =>
+            {
+                if (e.Key == Key.Enter || e.Key == Key.Space)
+                    _keyboardClickTargets.Add((Button)sender);
+            }));
+        EventManager.RegisterClassHandler(typeof(Button), Button.PreviewMouseLeftButtonDownEvent,
+            new MouseButtonEventHandler((sender, _) => _keyboardClickTargets.Remove((Button)sender)));
         EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent,
-            new RoutedEventHandler((_, _) => Keyboard.ClearFocus()));
+            new RoutedEventHandler((sender, _) =>
+            {
+                // 键盘触发的点击：不做任何焦点操作，按钮自然保持键盘焦点
+                if (sender is Button btn && _keyboardClickTargets.Remove(btn)) return;
+                Keyboard.ClearFocus();
+            }));
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照

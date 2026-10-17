@@ -43,7 +43,6 @@ public partial class HistoryWindow : Window
         var entry = _history.FirstOrDefault(h => h.Id == id);
         if (entry == null) return;
         try { Clipboard.SetText(entry.Prompt); } catch { }
-        System.Windows.Input.Keyboard.ClearFocus();
     }
 
     private void EditBtn_Click(object sender, RoutedEventArgs e)
@@ -63,6 +62,5 @@ public partial class HistoryWindow : Window
         _history.Remove(entry);
         _onDelete?.Invoke(entry);
         RefreshList();
-        System.Windows.Input.Keyboard.ClearFocus();
     }
 }
