@@ -33,7 +33,8 @@
                             Foreground="#9a9bb5"
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
-                            ToolTipService.InitialShowDelay="2000"
+                            ToolTipService.InitialShowDelay="800"
+                            ToolTipService.BetweenShowDelay="0"
                             Click="PinBtn_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
