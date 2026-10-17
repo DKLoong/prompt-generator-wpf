@@ -1575,8 +1575,10 @@ public partial class MainWindow : Window
             return;
         }
         // 过滤态 + 下拉展开：接管方向键导航。编辑态 SelectedItem=null 时 ComboBox 原生键盘导航被 TextBox
-        // 吞掉（↓ 无响应）；或导航文本同步被免疫误判恢复为过滤词。此处显式在过滤视图中移动选中，
-        // _loadingTemplates 短路 TextChanged/SelectionChanged，免疫不介入；保持候选项高亮与 Enter 确认语义。
+        // 吞掉（↓ 无响应）；或导航文本同步被免疫误判恢复为过滤词。此处显式在过滤视图中移动选中：
+        // SelectedIndex 变化驱动候选项 IsSelected 紫色高亮，随后用编辑态路径（SetCurrentValue）把框内文本
+        // 恢复为过滤词——导航只移高亮、不改用户输入；Enter 才确认切换。_loadingTemplates 短路
+        // TextChanged/SelectionChanged，免疫不介入。
         if (_filterActive && !_renaming && TemplateBox.IsDropDownOpen && (e.Key == Key.Down || e.Key == Key.Up))
         {
             int count = _templatesView?.Cast<object>().Count() ?? 0;
@@ -1585,8 +1587,10 @@ public partial class MainWindow : Window
             int next = e.Key == Key.Down
                 ? (idx < 0 ? 0 : (idx + 1) % count)
                 : (idx < 0 ? count - 1 : (idx - 1 + count) % count);
+            string filterText = TemplateBox.Text;   // 导航前框内即过滤词（SetCurrentValue 恢复的编辑态文本）
             _loadingTemplates = true;
-            TemplateBox.SelectedIndex = next;
+            TemplateBox.SelectedIndex = next;       // 高亮候选项（IsSelected 紫）
+            TemplateBox.SetCurrentValue(ComboBox.TextProperty, filterText);   // 框内保持过滤词（编辑态路径，不触发一致性校正）
             _loadingTemplates = false;
             e.Handled = true;
             return;
