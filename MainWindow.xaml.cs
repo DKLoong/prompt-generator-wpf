@@ -61,6 +61,9 @@ public partial class MainWindow : Window
     /// <summary>本次选中变化是否由鼠标点击候选项引发（窗口级 PreviewMouseLeftButtonDown 置位，SelectionChanged 消费）。
     /// 点击=确认选择（应切换模板）；键盘方向键导航经 _loadingTemplates 短路，不经此分支。</summary>
     private bool _mousePick;
+    /// <summary>本次下拉展开是否由鼠标点击箭头触发（MouseDown onToggle 置位，DropDownOpened 消费）。
+    /// 箭头点击=进入检索模式（展开时全选模板名，输入即替换+过滤）；键盘（↓/F4/Alt+Down）弹列表不改文本、不全选。</summary>
+    private bool _arrowClickPending;
     /// <summary>模板下拉的集合视图：ItemsSource 常驻此视图，过滤只切换 Filter 谓词，
     /// 避免重建 ItemsSource 破坏 IsEditable 下拉的输入与选中态（首字符被吞、方向键高亮丢失的根因）。</summary>
     private ICollectionView? _templatesView;
@@ -754,7 +757,12 @@ public partial class MainWindow : Window
     private void TemplateBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_loadingTemplates || _current == null) return;
-        if (_renaming) return;
+        if (_renaming)
+        {
+            // 改名态输入日志：定位 ComboBox 一致性回写覆盖输入（文本被回写回选中项名、光标跳段首）
+            Logging.Debug($"RenameTyping text={TemplateBox.Text} sel={(TemplateBox.SelectedItem as Template)?.Name}");
+            return;
+        }
         UpdateTemplateBoxVisual();   // 文本变化后刷新显示态灰字/编辑态黑字
         string text = TemplateBox.Text.Trim();
         bool equalsCurrent = string.Equals(text, _current.Name?.Trim(), StringComparison.Ordinal);
@@ -939,6 +947,7 @@ public partial class MainWindow : Window
     {
         bool onToggle = IsHitOnToggle(e.OriginalSource as DependencyObject);
         Logging.Debug($"MouseDown onToggle={onToggle} src={e.OriginalSource?.GetType().Name} anc={AncestorChain(e.OriginalSource as DependencyObject)} focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text}");
+        if (onToggle && !_renaming) _arrowClickPending = true;   // 箭头点击：展开时全选进入检索模式（键盘弹列表不标记）
         if (_renaming && onToggle)
         {
             e.Handled = true;   // 阻止焦点转移与列表切换
@@ -969,9 +978,19 @@ public partial class MainWindow : Window
         if (_renaming) return;
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
-            if (tb.SelectionLength > 0) tb.SelectionLength = 0;
-            if (_lastClickCaret >= 0) SetCaretAt(_lastClickCaret);
-            Logging.Debug($"DropDownOpened clearSel caret={tb.CaretIndex}");
+            if (_arrowClickPending)
+            {
+                // 箭头点击展开：全选进入检索模式（输入即替换+过滤）。键盘弹列表（↓/F4/Alt+Down）不标记，保持只读文本。
+                _arrowClickPending = false;
+                tb.SelectAll();
+                Logging.Debug($"DropDownOpened selectAll text={tb.Text} sel={tb.SelectionLength}");
+            }
+            else
+            {
+                if (tb.SelectionLength > 0) tb.SelectionLength = 0;
+                if (_lastClickCaret >= 0) SetCaretAt(_lastClickCaret);
+                Logging.Debug($"DropDownOpened clearSel caret={tb.CaretIndex}");
+            }
         }
     }
 
@@ -1038,10 +1057,22 @@ public partial class MainWindow : Window
     private void RenameTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
+        Logging.Debug($"RenameEnter current={_current?.Name}");
         _renaming = true;
+        // 离开过滤态：清过滤条件，防改名输入受过滤态残留/异步回写干扰（日志实证过滤残留）
+        _filterActive = false;
+        _userTyping = false;
+        _filterResetPending = false;
+        RefreshFilteredList();
         TemplateBox.IsDropDownOpen = false;
+        // 先预填文本、后置空选中项：若先置 null 再设 Text，ComboBox 会因 Text 匹配选中项名反向同步 SelectedItem 回 _current，
+        // 改名输入随即被一致性校正回写覆盖（实测输入'Bug'仍显示'Bug修复'）。无选中项时文本完全自由，改名确认/取消后再恢复指向当前模板。
         TemplateBox.Text = _current.Name ?? "";
+        _loadingTemplates = true;
+        TemplateBox.SelectedItem = null;
+        _loadingTemplates = false;
         UpdateTemplateBoxVisual();   // 改名态：黑字可编辑
+        Logging.Debug($"RenameReady sel={(TemplateBox.SelectedItem as Template)?.Name}");
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
             tb.Focus();
@@ -1157,6 +1188,13 @@ public partial class MainWindow : Window
         if (!_renaming) return;
         _renaming = false;
         TemplateBox.Text = _current?.Name ?? "";
+        // 改名入口已置空选中项：取消后恢复指向当前模板，保证下拉展开/显示态正常
+        if (TemplateBox.SelectedItem != _current)
+        {
+            _loadingTemplates = true;
+            TemplateBox.SelectedItem = _current;
+            _loadingTemplates = false;
+        }
         UpdateTemplateBoxVisual();   // 恢复显示态灰字
     }
 

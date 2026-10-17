@@ -163,9 +163,10 @@
                                             </ControlTemplate>
                                         </ToggleButton.Template>
                                     </ToggleButton>
-                                    <!-- 分隔线：箭头区左缘紫色描边通长（上下抵模板框边缘），视觉区分文本区/箭头区 -->
-                                    <Border Grid.Column="1" BorderThickness="1,0,0,0"
-                                            BorderBrush="{StaticResource AccentBrush}"
+                                    <!-- 分隔线：箭头区左缘描边通长（上下抵模板框边缘），视觉区分文本区/箭头区；
+                                         未聚焦=浅灰（与图标按钮同色 MutedBrush），聚焦模板框时高亮紫色 -->
+                                    <Border x:Name="sep" Grid.Column="1" BorderThickness="1,0,0,0"
+                                            BorderBrush="{StaticResource MutedBrush}"
                                             IsHitTestVisible="False" />
                                     <Path Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                                           IsHitTestVisible="False"
@@ -194,6 +195,7 @@
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
                                 <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="sep" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Opacity" Value="0.5" />
