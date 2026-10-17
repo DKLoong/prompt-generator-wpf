@@ -32,10 +32,6 @@ public class Template : INotifyPropertyChanged
 
     public List<Field> Fields { get; set; } = new();
 
-    /// <summary>本次会话内是否被用户显式保存过（不序列化）。保存过的空白新模板切换时不自动舍弃。</summary>
-    [JsonIgnore]
-    public bool Persisted { get; set; }
-
     /// <summary>历史记录编辑产生的临时模板（不序列化）。切走时自动删除，除非用户点了"保存到模板"。</summary>
     [JsonIgnore]
     public bool IsTemp { get; set; }
