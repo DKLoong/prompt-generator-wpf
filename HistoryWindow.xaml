@@ -22,8 +22,10 @@
             </Grid>
 
             <!-- 历史列表 -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <ItemsControl x:Name="HistoryList">
+            <!-- Tab 仅在有操作意义的按钮间循环（关闭/复制/编辑/删除）：
+                 ScrollViewer/ItemsControl/只读提示文本均不作为 Tab 停靠点；提示文本仍可用鼠标选中 -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsTabStop="False">
+                <ItemsControl x:Name="HistoryList" Focusable="False" IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Background="{StaticResource Panel2Brush}" CornerRadius="6"
@@ -56,7 +58,7 @@
                                     </Grid>
                                     <TextBox Text="{Binding Prompt}"
                                              Foreground="{StaticResource TextBrush}" FontSize="12"
-                                             TextWrapping="Wrap" IsReadOnly="True"
+                                             TextWrapping="Wrap" IsReadOnly="True" IsTabStop="False"
                                              Background="Transparent" BorderThickness="0"
                                              Padding="0" Cursor="IBeam"
                                              SelectionBrush="{StaticResource AccentBrush}"
