@@ -49,6 +49,11 @@ public partial class MainWindow : Window
     private bool _filterResetPending;
     private string _filterResetText = "";
 
+    /// <summary>用户最近一次键入后的过滤词（用户输入分支更新）。异步回写吞字（乱序覆盖新输入）时据此恢复，防止输入字符被回写吞掉。</summary>
+    private string _lastUserText = "";
+    /// <summary>鼠标单击文本区定位后的光标位置（MouseUp 冒泡记录）。ComboBox 打开下拉会重置 caret，据此还原点击定位。</summary>
+    private int _lastClickCaret = -1;
+
     /// <summary>本次文本变化是否源于用户键入（PreviewTextInput 置位，TextChanged 过滤分支消费）。
     /// 为 true 时进入编辑态（置 null + SetCurrentValue 恢复过滤词）；方向键导航（false）保留 SelectedItem，维持候选项高亮。</summary>
     private bool _userTyping;
@@ -732,6 +737,20 @@ public partial class MainWindow : Window
         string text = TemplateBox.Text.Trim();
         bool equalsCurrent = string.Equals(text, _current.Name?.Trim(), StringComparison.Ordinal);
         Logging.Debug($"TextChanged text={TemplateBox.Text} filter={_filterActive} renaming={_renaming} equals={equalsCurrent} focus={Keyboard.FocusedElement?.GetType().Name}");
+        // 异步回写吞字免疫：刷新视图产生的异步回写可能乱序覆盖用户刚键入的文本（日志实证 iu→u）；
+        // 回写非用户输入（_userTyping=false）且仍在过滤态、文本与用户最近输入不一致时，恢复用户输入。
+        // 点击候选项确认切换（_filterActive 已清）不受影响；方向键导航文本保持过滤词（==_lastUserText）不受影响。
+        if (!_userTyping && _filterActive && !string.IsNullOrEmpty(_lastUserText)
+            && !string.Equals(text, _lastUserText, StringComparison.Ordinal))
+        {
+            Logging.Debug($"IgnoreAsyncReset2 text={TemplateBox.Text} restore={_lastUserText}");
+            _filterResetPending = false;
+            _loadingTemplates = true;
+            TemplateBox.SetCurrentValue(ComboBox.TextProperty, _lastUserText);
+            _loadingTemplates = false;
+            SetCaretAt(_lastUserText.Length);
+            return;
+        }
         if (string.IsNullOrEmpty(text) || equalsCurrent)
         {
             // 回写免疫：视图 Refresh() 后 ComboBox 异步把 Text 回写为当前模板名（日志实证，回写时选中项非空），
@@ -785,6 +804,10 @@ public partial class MainWindow : Window
         if (_userTyping)
         {
             _userTyping = false;
+            _lastUserText = text;   // 记录用户输入后的过滤词（异步回写吞字免疫据此恢复）
+            int caret = -1;
+            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+                caret = tb.CaretIndex;   // 键入后光标已在插入字符之后；记录以便置 null/恢复后还原
             if (TemplateBox.SelectedItem != null)
             {
                 _loadingTemplates = true;
@@ -794,17 +817,18 @@ public partial class MainWindow : Window
             _loadingTemplates = true;
             TemplateBox.SetCurrentValue(ComboBox.TextProperty, text);
             _loadingTemplates = false;
-            SetCaretToEnd();   // 置 null 的 UpdateText 会把 caret 归零，恢复过滤词后移回末尾（继续键入追加在段尾）
+            if (caret >= 0) SetCaretAt(caret);   // 置 null 的 UpdateText 会把 caret 归零，还原到键入后位置（尊重 ←/点击移动过的光标）
         }
         RefreshFilteredList();
     }
 
-    /// <summary>把模板框编辑文本框的光标移到文本末尾并取消选中：置 null/SetCurrentValue 恢复文本后 caret 会停在段首。</summary>
-    private void SetCaretToEnd()
+    /// <summary>把模板框编辑文本框的光标设置到指定位置并取消选中：置 null/SetCurrentValue 恢复文本后 caret 会停在段首，
+    /// 需还原到操作前位置（用户用 ←/鼠标移动过的光标不被强制拉回末尾）。</summary>
+    private void SetCaretAt(int caret)
     {
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
-            tb.CaretIndex = tb.Text.Length;
+            tb.CaretIndex = Math.Clamp(caret, 0, tb.Text.Length);
             tb.SelectionLength = 0;
         }
     }
@@ -813,6 +837,8 @@ public partial class MainWindow : Window
     private void TemplateBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
     {
         if (_renaming || _current == null) return;
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+            Logging.Debug($"PTextInput sel={tb.SelectionLength} caret={tb.CaretIndex} text={tb.Text}");
         _filterResetPending = false;   // 新一轮真实输入：异步回写免疫失效，由本次输入接管
         _userTyping = true;            // 标记本次文本变化来自用户键入（TextChanged 过滤分支消费）
         Logging.Debug($"PreviewTextInput focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text} filter={_filterActive}");
@@ -859,7 +885,8 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>文本/箭头分区点击：箭头区=切换列表；文本区=全选+输入。改名态点击箭头：忽略并提示先退出编辑。
+    /// <summary>文本/箭头分区点击：箭头区=切换列表；文本区=正常光标定位（TextBox 原生行为：单击定位、双击选词），
+    /// 不做强制全选——用户微调过滤词时点击定位光标、输入在光标处插入（覆盖全文可 Ctrl+A 或双击）。改名态点击箭头：忽略并提示先退出编辑。
     /// 拦截必须在此隧道阶段完成——点击箭头时焦点会移向 ComboBox 触发失焦确认（TryConfirmRename 退出改名态），
     /// 若等冒泡阶段再拦，改名态已被确认、列表已弹出。</summary>
     private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -872,10 +899,47 @@ public partial class MainWindow : Window
             ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
             return;
         }
-        if (e.ClickCount == 1 && !onToggle)
+    }
+
+    /// <summary>点击释放：可编辑 ComboBox 聚焦时内部会把编辑框全选（覆盖点击定位，导致后续输入替换全文）；
+    /// 单击文本区后清除全选，保留 TextBox 已定位的光标——输入在光标处插入。双击选词（ClickCount=2）不受影响。</summary>
+    /// <summary>下拉打开时清除编辑框全选：WPF 可编辑 ComboBox 打开下拉会全选编辑框且把 caret 重置为 0（覆盖点击定位，
+    /// 导致"点击定位后输入替换全文/插错位置"——日志实证 PTextInput sel=0 caret=1 → DropDownOpened caret=0）。
+    /// 清除后按点击定位恢复 caret（_lastClickCaret），后续输入在光标处插入。改名态不开下拉，不受影响。</summary>
+    private void TemplateBox_DropDownOpened(object sender, EventArgs e)
+    {
+        if (_renaming) return;
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
-            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
-                tb.SelectAll();
+            if (tb.SelectionLength > 0) tb.SelectionLength = 0;
+            if (_lastClickCaret >= 0) SetCaretAt(_lastClickCaret);
+            Logging.Debug($"DropDownOpened clearSel caret={tb.CaretIndex}");
+        }
+    }
+
+    /// <summary>点击释放（隧道）：记录点击定位后的光标（_lastClickCaret 供 DropDownOpened 还原）。
+    /// 冒泡 MouseUp 会被 ComboBox 类处理 Handled（不触发），故在隧道记录；单击文本区才记录（箭头点击不定位）。</summary>
+    private void TemplateBox_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+        {
+            if (e.ClickCount == 1 && !IsHitOnToggle(e.OriginalSource as DependencyObject))
+                _lastClickCaret = tb.CaretIndex;   // 点击定位后的光标（MouseDown 已定位）
+            Logging.Debug($"MouseUpPre click={e.ClickCount} sel={tb.SelectionLength} caret={tb.CaretIndex} text={tb.Text}");
+        }
+    }
+
+    /// <summary>点击释放（冒泡，所有类处理之后）：可编辑 ComboBox 在冒泡阶段会把编辑框全选（覆盖点击定位，
+    /// 导致后续输入替换全文）；单击文本区后清除全选，保留 TextBox 已定位的光标——输入在光标处插入。双击选词（ClickCount=2）不受影响。</summary>
+    private void TemplateBox_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_renaming || e.ClickCount != 1) return;
+        if (IsHitOnToggle(e.OriginalSource as DependencyObject)) return;
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+        {
+            _lastClickCaret = tb.CaretIndex;   // 点击定位后的光标（DropDownOpened 重置 caret 时据此还原）
+            if (tb.SelectionLength > 0) tb.SelectionLength = 0;
+            Logging.Debug($"MouseUp sel={tb.SelectionLength} caret={tb.CaretIndex} text={tb.Text}");
         }
     }
 
@@ -1599,11 +1663,14 @@ public partial class MainWindow : Window
                 ? (idx < 0 ? 0 : (idx + 1) % count)
                 : (idx < 0 ? count - 1 : (idx - 1 + count) % count);
             string filterText = TemplateBox.Text;   // 导航前框内即过滤词（SetCurrentValue 恢复的编辑态文本）
+            int caret = -1;
+            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+                caret = tb.CaretIndex;   // 导航前光标位置；恢复过滤词后还原，导航不改变光标位置
             _loadingTemplates = true;
             TemplateBox.SelectedIndex = next;       // 高亮候选项（IsSelected 紫）
             TemplateBox.SetCurrentValue(ComboBox.TextProperty, filterText);   // 框内保持过滤词（编辑态路径，不触发一致性校正）
             _loadingTemplates = false;
-            SetCaretToEnd();   // 恢复过滤词后 caret 归零，移回末尾（继续键入追加在段尾）
+            if (caret >= 0) SetCaretAt(caret);
             e.Handled = true;
             return;
         }
