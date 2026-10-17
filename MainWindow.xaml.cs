@@ -786,7 +786,8 @@ public partial class MainWindow : Window
         return false;
     }
 
-    /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。</summary>
+    /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。
+    /// 注意：焦点必须留在编辑框内（tb.Focus），不能再 Keyboard.Focus 回 ComboBox——那会触发失焦确认立即退出改名态。</summary>
     private void RenameTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
@@ -798,7 +799,6 @@ public partial class MainWindow : Window
             tb.Focus();
             tb.SelectAll();
         }
-        Keyboard.Focus(TemplateBox);
     }
 
     /// <summary>失焦时若处于改名态则确认改名（焦点已移走，无需再安排落点）。</summary>

@@ -163,9 +163,9 @@
                                             </ControlTemplate>
                                         </ToggleButton.Template>
                                     </ToggleButton>
-                                    <!-- 分隔线：箭头区左缘紫色描边，视觉区分文本区/箭头区 -->
+                                    <!-- 分隔线：箭头区左缘紫色描边通长（上下抵模板框边缘），视觉区分文本区/箭头区 -->
                                     <Border Grid.Column="1" BorderThickness="1,0,0,0"
-                                            BorderBrush="{StaticResource AccentBrush}" Margin="0,7,0,7"
+                                            BorderBrush="{StaticResource AccentBrush}"
                                             IsHitTestVisible="False" />
                                     <Path Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                                           IsHitTestVisible="False"
