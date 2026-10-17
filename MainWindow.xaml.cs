@@ -61,6 +61,9 @@ public partial class MainWindow : Window
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
+        // 下拉箭头独立：箭头区专属切换列表；改名态点击箭头忽略并提示（先退出编辑才能浏览/切换）
+        if (TemplateBox.Template?.FindName("toggle", TemplateBox) is System.Windows.Controls.Primitives.ToggleButton toggle)
+            toggle.PreviewMouseLeftButtonDown += Toggle_PreviewMouseLeftButtonDown;
         // 按钮点击后的焦点策略（统一覆盖新增/删除/保存等）：
         // 键盘（Enter/Space）触发的点击保留焦点，保证键盘导航连续（Tab 后 Enter，焦点仍在该按钮）；
         // 鼠标触发的点击清除键盘焦点，避免 IsKeyboardFocused 高亮残留（与既有鼠标行为完全一致）。
@@ -769,6 +772,16 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>箭头区点击：改名态忽略并提示（先退出编辑才能浏览/切换模板）；其余状态正常切换列表。</summary>
+    private void Toggle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_renaming)
+        {
+            e.Handled = true;
+            ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
+        }
+    }
+
     /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。</summary>
     private void RenameTemplate_Click(object sender, RoutedEventArgs e)
     {
@@ -1393,6 +1406,13 @@ public partial class MainWindow : Window
             if (TemplateBox.IsDropDownOpen) return;
             e.Handled = true;
             Close();
+            return;
+        }
+        // 改名态：拦截所有"打开列表"的入口（箭头已拦，F4/Alt+Down 一并拦），提示先退出编辑
+        if (_renaming && (e.Key == Key.F4 || (e.Key == Key.Down && Keyboard.Modifiers == ModifierKeys.Alt)))
+        {
+            e.Handled = true;
+            ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
             return;
         }
         // Ctrl+Enter：生成并复制
