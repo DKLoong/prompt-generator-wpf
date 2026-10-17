@@ -88,7 +88,6 @@ public static class PromptBuilder
         {
             // 最外层以包裹符结尾且内层尾标点可替换：
             // 去掉内层可替换标点，把句号追加到最外层闭合符之后
-            int removeAt = s.Length - 1 - stripped * 0; // 占位，实际按包裹层数计算
             final = InsertPeriodOutside(s, stripped);
         }
         else if (isLast && isReplaceable && !endsWithPeriod)
