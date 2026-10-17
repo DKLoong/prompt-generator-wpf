@@ -6,6 +6,9 @@ public class AppSettings
     /// <summary>全局显示/隐藏热键，格式如 "Ctrl+Alt+P"。</summary>
     public string Hotkey { get; set; } = "Ctrl+Alt+Shift+P";
 
+    /// <summary>日志级别（0=Error,1=Warn,2=Info,3=Debug），默认 Info。</summary>
+    public int LogLevel { get; set; } = 2;
+
     /// <summary>是否启用贴边收起。</summary>
     public bool EdgeDockEnabled { get; set; } = true;
 

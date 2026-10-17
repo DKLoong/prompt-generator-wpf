@@ -38,8 +38,9 @@ public class SettingsStore
                 _cache = new AppSettings();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Logging.Warn($"设置加载失败，使用默认设置：{ex.Message}");
             _cache = new AppSettings();
         }
         return _cache;
@@ -54,6 +55,7 @@ public class SettingsStore
         }
         catch (Exception ex)
         {
+            Logging.Error($"设置保存失败：{ex.Message}");
             throw new IOException($"保存设置失败: {ex.Message}", ex);
         }
     }

@@ -61,8 +61,9 @@ public class TemplateStore
                 _cache = new TemplateStoreData();
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Logging.Warn($"模板加载失败，使用默认模板：{ex.Message}");
             _cache = new TemplateStoreData();
         }
         // 保证至少有一个模板（默认模板）
@@ -83,6 +84,7 @@ public class TemplateStore
         }
         catch (Exception ex)
         {
+            Logging.Error($"模板保存失败：{ex.Message}");
             throw new IOException($"保存模板失败: {ex.Message}", ex);
         }
     }
