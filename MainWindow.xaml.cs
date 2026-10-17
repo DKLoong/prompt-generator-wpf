@@ -32,6 +32,8 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, Template> _savedSnapshots = new();
     /// <summary>未保存的新模板（"新增模板"创建后尚未保存；非空时禁止再新增）。</summary>
     private Template? _pendingNewTemplate;
+    /// <summary>历史记录面板当前实例（非空表示已打开）。点击历史按钮在打开/关闭间切换。</summary>
+    private HistoryWindow? _historyWindow;
 
     public MainWindow()
     {
@@ -1263,6 +1265,13 @@ public partial class MainWindow : Window
 
     private void HistoryBtn_Click(object sender, RoutedEventArgs e)
     {
+        // 点击在打开/关闭之间切换：面板已打开时再点则关闭，避免重复创建多个面板
+        if (_historyWindow != null)
+        {
+            _historyWindow.Close();
+            _historyWindow = null;
+            return;
+        }
         var win = new HistoryWindow(_data.History,
             onEdit: entry =>
             {
@@ -1289,6 +1298,9 @@ public partial class MainWindow : Window
         {
             Owner = this
         };
+        // 面板通过编辑/复制/✕ 等任何途径关闭后，同步清引用，保证下次点击可重新打开
+        win.Closed += (_, _) => _historyWindow = null;
+        _historyWindow = win;
         win.Show();
     }
 
