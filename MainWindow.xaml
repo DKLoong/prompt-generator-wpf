@@ -33,7 +33,7 @@
                             Foreground="#9a9bb5"
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
-                            ToolTipService.InitialShowDelay="200"
+                            ToolTipService.InitialShowDelay="2000"
                             Click="PinBtn_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -62,7 +62,7 @@
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button x:Name="HistoryBtn" Style="{StaticResource TitleBtn}" ToolTip="历史记录"
-                            ToolTipService.InitialShowDelay="200" Click="HistoryBtn_Click">
+                            Click="HistoryBtn_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="bd" Width="22" Height="22" CornerRadius="4" Background="Transparent">
