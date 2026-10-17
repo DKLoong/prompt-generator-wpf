@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="历史记录" Width="560" Height="520"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+        ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        PreviewKeyDown="HistoryWindow_PreviewKeyDown">
     <Border Background="{StaticResource PanelBrush}" CornerRadius="10"
             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
             MouseLeftButtonDown="WindowDrag_MouseLeftButtonDown">

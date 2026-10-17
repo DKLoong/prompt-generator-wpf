@@ -42,8 +42,8 @@ public partial class MainWindow : Window
     private readonly HashSet<Button> _keyboardClickTargets = new();
     /// <summary>键盘聚焦（Tab）时已由本类即时打开的提示所在按钮；LostKeyboardFocus 时据此关闭，避免误关悬停路径打开的提示。</summary>
     private static readonly HashSet<Button> _keyboardTooltipButtons = new();
-    /// <summary>Tab 导航标记：仅 Tab 键引起的焦点变化才即时弹提示；鼠标点击、窗口关闭等焦点归还不触发。</summary>
-    private static bool _keyboardTabNavigationPending;
+    /// <summary>键盘导航标记（Tab/方向键）：仅键盘导航引起的焦点变化才即时弹提示；鼠标点击、窗口关闭等焦点归还不触发。</summary>
+    private static bool _keyboardNavPending;
 
     public MainWindow()
     {
@@ -68,7 +68,7 @@ public partial class MainWindow : Window
             new MouseButtonEventHandler((sender, _) =>
             {
                 _keyboardClickTargets.Remove((Button)sender);
-                _keyboardTabNavigationPending = false;
+                _keyboardNavPending = false;
             }));
         EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent,
             new RoutedEventHandler((sender, _) =>
@@ -84,12 +84,14 @@ public partial class MainWindow : Window
             new KeyboardFocusChangedEventHandler(OnButtonGotKeyboardFocus));
         EventManager.RegisterClassHandler(typeof(Button), Button.LostKeyboardFocusEvent,
             new KeyboardFocusChangedEventHandler(OnButtonLostKeyboardFocus));
-        // Tab 导航标记：Tab 的 KeyDown 先于键盘导航处理到达（隧道阶段），据此区分
-        // "Tab 导航引起的聚焦"与"窗口关闭等焦点归还"，后者不即时弹提示。
+        // 键盘导航标记：Tab/方向键的 KeyDown 先于键盘导航处理到达（隧道阶段），据此区分
+        // "键盘导航引起的聚焦"与"窗口关闭等焦点归还"，后者不即时弹提示。
         EventManager.RegisterClassHandler(typeof(UIElement), UIElement.PreviewKeyDownEvent,
             new KeyEventHandler((sender, e) =>
             {
-                if (e.Key == Key.Tab) _keyboardTabNavigationPending = true;
+                if (e.Key == Key.Tab || e.Key == Key.Up || e.Key == Key.Down
+                    || e.Key == Key.Left || e.Key == Key.Right)
+                    _keyboardNavPending = true;
             }));
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
@@ -102,11 +104,11 @@ public partial class MainWindow : Window
 
     private static void OnButtonGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        // 仅 Tab 键盘导航引起的聚焦即时弹提示；鼠标点击（IsMouseOver 为真）与
-        // 窗口关闭等焦点归还（无 Tab 标记）均不弹。标记单次消费。
-        bool fromTab = _keyboardTabNavigationPending;
-        _keyboardTabNavigationPending = false;
-        if (sender is not Button b || b.IsMouseOver || !fromTab) return;
+        // 仅 Tab/方向键键盘导航引起的聚焦即时弹提示；鼠标点击（IsMouseOver 为真）与
+        // 窗口关闭等焦点归还（无导航标记）均不弹。标记单次消费。
+        bool fromKeyboardNav = _keyboardNavPending;
+        _keyboardNavPending = false;
+        if (sender is not Button b || b.IsMouseOver || !fromKeyboardNav) return;
         if (GetOrCreateToolTip(b) is not ToolTip tip) return;
         tip.PlacementTarget = b;
         tip.IsOpen = true;
@@ -1184,6 +1186,14 @@ public partial class MainWindow : Window
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // ESC：关闭主窗口（复用 ✕ 的既有关闭/隐藏到托盘逻辑）；模板下拉展开时先让下拉自行收起
+        if (e.Key == Key.Escape)
+        {
+            if (TemplateBox.IsDropDownOpen) return;
+            e.Handled = true;
+            Close();
+            return;
+        }
         // Ctrl+Enter：生成并复制
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
         {

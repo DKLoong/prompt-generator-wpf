@@ -32,6 +32,16 @@ public partial class HistoryWindow : Window
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
+    /// <summary>ESC：关闭历史记录面板（与 ✕ 行为一致）。</summary>
+    private void HistoryWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Escape)
+        {
+            e.Handled = true;
+            Close();
+        }
+    }
+
     /// <summary>Tab 聚焦到关闭按钮时立即弹出"关闭"提示；移出焦点时收起。
     /// 悬停路径由 ToolTipService 自动设置 PlacementTarget；键盘路径需显式指定，否则按鼠标位置摆放。</summary>
     private void CloseBtn_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
