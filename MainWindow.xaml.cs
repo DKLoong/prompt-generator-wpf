@@ -453,24 +453,39 @@ public partial class MainWindow : Window
     {
         if (_loadingTemplates) return;
         // 离开当前模板前：
+        // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
+        //   除当前模板外，也清理列表中残留的其他历史编辑模板——例如：编辑历史A后未切走
+        //   又直接编辑历史B，onEdit 中 _loadingTemplates 会屏蔽本次切换的离开清理，
+        //   导致 A 残留在列表，需在后续任意一次切换时一并清除。
         // - 有快照（保存过的模板）：从快照恢复，丢弃未保存的编辑
         // - 无快照（新建未保存）：空白则删除，有内容则保留在内存
         if (_current != null)
         {
-            // 临时模板（历史记录编辑产生）：切走时自动删除，除非用户点了"保存到模板"
-            if (_current.IsTemp && !_savedSnapshots.ContainsKey(_current.Id))
+            var tempToRemove = _data.Templates
+                .Where(x => x.IsTemp && !_savedSnapshots.ContainsKey(x.Id))
+                .ToList();
+            if (tempToRemove.Count > 0)
             {
-                _data.Templates.Remove(_current);
+                foreach (var t in tempToRemove)
+                {
+                    _data.Templates.Remove(t);
+                    // 同步清理"未保存新模板"标记（历史编辑模板不会命中，统一处理更稳妥）
+                    if (_pendingNewTemplate == t) _pendingNewTemplate = null;
+                }
                 try { _store.Save(_data); } catch { }
             }
-            else if (_savedSnapshots.ContainsKey(_current.Id))
-                RestoreFromSnapshot(_current);
-            else if (IsBlankNewTemplate(_current))
+            // 当前模板若已被上述清理移除（历史编辑模板），跳过快照恢复等后续处理
+            if (_current != null && _data.Templates.Contains(_current))
             {
-                _data.Templates.Remove(_current);
-                // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
-                if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
-                try { _store.Save(_data); } catch { }
+                if (_savedSnapshots.ContainsKey(_current.Id))
+                    RestoreFromSnapshot(_current);
+                else if (IsBlankNewTemplate(_current))
+                {
+                    _data.Templates.Remove(_current);
+                    // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
+                    if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
+                    try { _store.Save(_data); } catch { }
+                }
             }
         }
         LoadCurrentTemplate();
