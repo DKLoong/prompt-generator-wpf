@@ -414,9 +414,6 @@ public partial class MainWindow : Window
         PinBtn.Tag = _pinned ? "pinned" : null;
     }
 
-    private static Style? FindIconBtnStyle() =>
-        Application.Current.TryFindResource("IconBtn") as Style;
-
     private static Style? FindIconBtnSoftStyle() =>
         Application.Current.TryFindResource("IconBtnSoft") as Style;
 
