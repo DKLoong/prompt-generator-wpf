@@ -104,6 +104,8 @@
                           IsEditable="True" IsTextSearchEnabled="False"
                           TextBoxBase.TextChanged="TemplateBox_TextChanged"
                           SelectionChanged="TemplateBox_SelectionChanged"
+                          PreviewMouseLeftButtonDown="TemplateBox_PreviewMouseLeftButtonDown"
+                          LostKeyboardFocus="TemplateBox_LostKeyboardFocus"
                           VerticalContentAlignment="Center" />
                 <Button Grid.Column="1" Style="{StaticResource ActionBtn}" Content="新增模板"
                         Margin="0,0,6,0" Click="NewTemplate_Click" />

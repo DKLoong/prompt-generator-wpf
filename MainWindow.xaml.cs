@@ -38,6 +38,10 @@ public partial class MainWindow : Window
     private string? _lastCopiedPrompt;
     /// <summary>上次"生成并提交"成功的提示词；内容未改动时重复提交将被拦截。</summary>
     private string? _lastSubmittedPrompt;
+    /// <summary>输入过滤态：用户在模板框输入了非当前模板名的文本，下拉按包含匹配过滤。</summary>
+    private bool _filterActive;
+    /// <summary>双击改名态：框内文本作为新模板名编辑，Enter/失焦确认，Esc 取消。</summary>
+    private bool _renaming;
     /// <summary>键盘（Enter/Space）即将触发点击的按钮。Click 时据此区分键盘/鼠标触发：键盘触发保留焦点，鼠标触发清除焦点。</summary>
     private readonly HashSet<Button> _keyboardClickTargets = new();
     /// <summary>键盘聚焦（Tab）时已由本类即时打开的提示所在按钮；LostKeyboardFocus 时据此关闭，避免误关悬停路径打开的提示。</summary>
@@ -525,9 +529,14 @@ public partial class MainWindow : Window
     private void RefreshTemplateBox()
     {
         _loadingTemplates = true;
+        _filterActive = false;
         TemplateBox.ItemsSource = GetDisplayOrder().ToList();
         TemplateBox.DisplayMemberPath = nameof(PromptGenerator.Models.Template.Name);
-        if (_data.Templates.Count > 0) TemplateBox.SelectedIndex = 0;
+        if (_data.Templates.Count > 0)
+        {
+            TemplateBox.SelectedIndex = 0;
+            TemplateBox.Text = (TemplateBox.SelectedItem as Template)?.Name ?? "";
+        }
         _loadingTemplates = false;
         LoadCurrentTemplate();
     }
@@ -551,7 +560,11 @@ public partial class MainWindow : Window
         var sel = TemplateBox.SelectedItem as Template;
         _loadingTemplates = true;
         TemplateBox.ItemsSource = GetDisplayOrder().ToList();
-        if (sel != null) TemplateBox.SelectedItem = sel;
+        if (sel != null)
+        {
+            TemplateBox.SelectedItem = sel;
+            TemplateBox.Text = sel.Name ?? "";
+        }
         _loadingTemplates = false;
     }
 
@@ -659,13 +672,112 @@ public partial class MainWindow : Window
             t.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
     }
 
-    /// <summary>可编辑下拉框：用户直接改模板名 → 写回当前模板。</summary>
+    /// <summary>可编辑下拉框：输入文本即时按模板名过滤（不区分大小写的包含匹配）；改名输入（双击态）不触发过滤。</summary>
     private void TemplateBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_loadingTemplates || _current == null) return;
-        string name = TemplateBox.Text.Trim();
-        if (!string.IsNullOrEmpty(name) && _current.Name != name)
-            _current.Name = name;
+        if (_renaming) return;
+        string text = TemplateBox.Text.Trim();
+        bool equalsCurrent = string.Equals(text, _current.Name?.Trim(), StringComparison.Ordinal);
+        if (string.IsNullOrEmpty(text) || equalsCurrent)
+        {
+            // 空文本或恰好等于当前模板名：视为回到选中态，恢复全量列表
+            if (_filterActive)
+            {
+                _filterActive = false;
+                RefreshFilteredList();
+            }
+            return;
+        }
+        // 用户输入过滤词：展开下拉显示过滤结果
+        _filterActive = true;
+        if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
+        RefreshFilteredList();
+    }
+
+    /// <summary>按当前过滤词重建下拉列表：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；过滤态不保留旧选中项。</summary>
+    private void RefreshFilteredList()
+    {
+        IEnumerable<Template> source = GetDisplayOrder();
+        if (_filterActive)
+        {
+            string kw = TemplateBox.Text.Trim();
+            source = source.Where(t => t.Name?.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+        else
+        {
+            var sel = TemplateBox.SelectedItem as Template;
+            _loadingTemplates = true;
+            TemplateBox.ItemsSource = source.ToList();
+            if (sel != null) TemplateBox.SelectedItem = sel;
+            _loadingTemplates = false;
+            return;
+        }
+        _loadingTemplates = true;
+        TemplateBox.ItemsSource = source.ToList();
+        _loadingTemplates = false;
+    }
+
+    /// <summary>清空过滤：回填当前选中模板名并恢复全量列表（Esc 第一级）。</summary>
+    private void ClearFilter()
+    {
+        if (!_filterActive) return;
+        _filterActive = false;
+        TemplateBox.Text = (TemplateBox.SelectedItem as Template)?.Name ?? _current?.Name ?? "";
+        RefreshFilteredList();
+    }
+
+    /// <summary>双击进入改名态：收起下拉、文本预填当前模板名并全选，直接键入即覆盖。</summary>
+    private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || _renaming || _current == null) return;
+        _renaming = true;
+        TemplateBox.IsDropDownOpen = false;
+        TemplateBox.Text = _current.Name ?? "";
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+            tb.SelectAll();
+        e.Handled = true;
+    }
+
+    /// <summary>失焦时若处于改名态则确认改名（焦点已移走，无需再安排落点）。</summary>
+    private void TemplateBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_renaming) TryConfirmRename();
+    }
+
+    /// <summary>确认改名：非空、不重名才写回并退出改名态；空名还原退出；重名提示并保持改名态。</summary>
+    private bool TryConfirmRename()
+    {
+        if (!_renaming) return false;
+        string newName = TemplateBox.Text.Trim();
+        if (string.IsNullOrEmpty(newName))
+        {
+            TemplateBox.Text = _current?.Name ?? "";   // 空名：还原退出（视同取消）
+            _renaming = false;
+            return true;
+        }
+        var dup = _data.Templates.FirstOrDefault(t =>
+            t != _current && string.Equals(t.Name?.Trim(), newName, StringComparison.Ordinal));
+        if (dup != null)
+        {
+            ShowToast($"模板名「{newName}」已存在", false);
+            return false;   // 保持改名态，用户可继续修改
+        }
+        if (_current != null && _current.Name != newName)
+        {
+            _current.Name = newName;
+            try { PersistData(); } catch { }
+        }
+        _renaming = false;
+        return true;
+    }
+
+    /// <summary>取消改名：恢复原名并退出改名态。</summary>
+    private void CancelRename()
+    {
+        if (!_renaming) return;
+        _renaming = false;
+        TemplateBox.Text = _current?.Name ?? "";
     }
 
     private void LoadCurrentTemplate()
@@ -1209,9 +1321,22 @@ public partial class MainWindow : Window
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        // ESC：关闭主窗口（复用 ✕ 的既有关闭/隐藏到托盘逻辑）；模板下拉展开时先让下拉自行收起
+        // ESC：改名态→取消改名（焦点回模板框）；过滤态→先清过滤恢复全列表，再按收起；下拉展开→交还下拉收起；其余→关闭窗口
         if (e.Key == Key.Escape)
         {
+            if (_renaming)
+            {
+                CancelRename();
+                TemplateBox.Focus();
+                e.Handled = true;
+                return;
+            }
+            if (_filterActive)
+            {
+                ClearFilter();   // 第一级：恢复全量列表，第二次 Esc 再走收起/关窗
+                e.Handled = true;
+                return;
+            }
             if (TemplateBox.IsDropDownOpen) return;
             e.Handled = true;
             Close();
@@ -1245,11 +1370,31 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
-        // 模板下拉展开时按 Enter：选中当前项并把焦点移到第一个字段框
-        if (e.Key == Key.Enter && TemplateBox.IsDropDownOpen)
+        // Enter：改名态→确认改名并焦点到第一个字段框；展开态→选中当前项、回填文本、收起、焦点到第一个字段框；过滤无匹配→不动作
+        if (e.Key == Key.Enter)
         {
-            TemplateBox.IsDropDownOpen = false;
-            FocusFirstInput();
+            if (_renaming)
+            {
+                e.Handled = true;
+                if (TryConfirmRename()) FocusFirstInput();
+                return;   // 重名时留在改名态
+            }
+            if (TemplateBox.IsDropDownOpen)
+            {
+                if (_filterActive && TemplateBox.SelectedItem == null)
+                {
+                    e.Handled = true;   // 无匹配：保持过滤词，不动作
+                    return;
+                }
+                TemplateBox.IsDropDownOpen = false;
+                if (_filterActive && TemplateBox.SelectedItem is Template sel)
+                {
+                    _filterActive = false;
+                    TemplateBox.Text = sel.Name;   // 回填选中模板名
+                    RefreshFilteredList();          // 恢复全量列表（含置顶顺序）
+                }
+                FocusFirstInput();
+            }
         }
     }
 
