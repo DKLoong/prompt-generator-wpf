@@ -626,6 +626,7 @@ public partial class MainWindow : Window
                 TemplateBox.IsDropDownOpen = false;
             }
             _loadingTemplates = false;
+            RefreshFilteredList();   // 清过滤条件恢复全量列表：无删除时视图不重建，漏清 Filter 会导致下次展开残留过滤结果（截图实证）
         }
         Logging.Debug($"SelChanged sel={(TemplateBox.SelectedItem as Template)?.Name} filter={_filterActive} loading={_loadingTemplates}");
         bool removedAny = false;   // 离开清理是否删除了空白/临时模板（需重建视图避免列表残留）
