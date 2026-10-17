@@ -1,7 +1,7 @@
 <Window x:Class="PromptGenerator.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="设置" Width="360" Height="270"
+        Title="设置" Width="360" Height="320"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
     <Border Background="{StaticResource PanelBrush}" CornerRadius="10"
@@ -42,6 +42,11 @@
                           Content="启用贴边收起" Checked="DockCheck_Changed" Unchecked="DockCheck_Changed"/>
                 <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{StaticResource MutedBrush}"
                            Text="窗口拖到屏幕边缘自动收起，悬停边缘条展开"/>
+
+                <CheckBox x:Name="PinRecentCheck" Margin="0,12,0,0" Foreground="{StaticResource TextBrush}" FontSize="12"
+                          Content="最近使用置顶" Checked="PinRecentCheck_Changed" Unchecked="PinRecentCheck_Changed"/>
+                <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                           Text="最近使用的 5 个模板自动排到下拉列表最前"/>
             </StackPanel>
 
             <!-- 底部按钮 -->

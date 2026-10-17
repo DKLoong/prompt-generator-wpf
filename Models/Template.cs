@@ -32,6 +32,9 @@ public class Template : INotifyPropertyChanged
 
     public List<Field> Fields { get; set; } = new();
 
+    /// <summary>最近一次"生成并复制/提交"成功的时间；用于"最近使用置顶"排序（无值则永不置顶）。</summary>
+    public DateTime? LastUsedAt { get; set; }
+
     /// <summary>历史记录编辑产生的临时模板（不序列化）。切走时自动删除，除非用户点了"保存到模板"。</summary>
     [JsonIgnore]
     public bool IsTemp { get; set; }

@@ -13,13 +13,18 @@ public partial class SettingsWindow : Window
     /// <summary>是否启用贴边收起。</summary>
     public bool DockEnabled { get; private set; }
 
-    public SettingsWindow(string currentHotkey, bool dockEnabled)
+    /// <summary>是否启用"最近使用置顶"。</summary>
+    public bool PinRecentEnabled { get; private set; }
+
+    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled)
     {
         InitializeComponent();
         HotkeyText = currentHotkey;
         DockEnabled = dockEnabled;
+        PinRecentEnabled = pinRecentEnabled;
         HotkeyBox.Text = currentHotkey;
         DockCheck.IsChecked = dockEnabled;
+        PinRecentCheck.IsChecked = pinRecentEnabled;
         Loaded += (_, _) => HotkeyBox.Focus();
     }
 
@@ -31,6 +36,11 @@ public partial class SettingsWindow : Window
     private void DockCheck_Changed(object sender, RoutedEventArgs e)
     {
         DockEnabled = DockCheck.IsChecked == true;
+    }
+
+    private void PinRecentCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        PinRecentEnabled = PinRecentCheck.IsChecked == true;
     }
 
     /// <summary>捕获按键组合：直接把按下的键格式化为 "Ctrl+Alt+P"。</summary>

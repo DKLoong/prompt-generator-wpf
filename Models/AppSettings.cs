@@ -9,6 +9,9 @@ public class AppSettings
     /// <summary>是否启用贴边收起。</summary>
     public bool EdgeDockEnabled { get; set; } = true;
 
+    /// <summary>是否启用"最近使用置顶"：最近使用的 5 个模板自动排到下拉列表最前。</summary>
+    public bool PinRecentTemplates { get; set; } = true;
+
     /// <summary>窗口位置与尺寸记忆。</summary>
     public double WindowX { get; set; } = double.NaN;
     public double WindowY { get; set; } = double.NaN;

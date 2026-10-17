@@ -525,11 +525,34 @@ public partial class MainWindow : Window
     private void RefreshTemplateBox()
     {
         _loadingTemplates = true;
-        TemplateBox.ItemsSource = _data.Templates;
+        TemplateBox.ItemsSource = GetDisplayOrder().ToList();
         TemplateBox.DisplayMemberPath = nameof(PromptGenerator.Models.Template.Name);
         if (_data.Templates.Count > 0) TemplateBox.SelectedIndex = 0;
         _loadingTemplates = false;
         LoadCurrentTemplate();
+    }
+
+    /// <summary>视图层显示顺序：开启"最近使用置顶"时，最近使用的 5 个模板排最前，其余保持存储顺序；不改变 _data.Templates 本身。</summary>
+    private IEnumerable<Template> GetDisplayOrder()
+    {
+        if (!_settings.PinRecentTemplates) return _data.Templates;
+        var pinned = _data.Templates
+            .Where(t => t.LastUsedAt.HasValue)
+            .OrderByDescending(t => t.LastUsedAt)
+            .Take(5)
+            .ToList();
+        var pinnedIds = new HashSet<string>(pinned.Select(t => t.Id));
+        return pinned.Concat(_data.Templates.Where(t => !pinnedIds.Contains(t.Id)));
+    }
+
+    /// <summary>LastUsedAt 更新后重建显示顺序，保留当前选中项（不重置到首项）。</summary>
+    private void RefreshOrderKeepSelection()
+    {
+        var sel = TemplateBox.SelectedItem as Template;
+        _loadingTemplates = true;
+        TemplateBox.ItemsSource = GetDisplayOrder().ToList();
+        if (sel != null) TemplateBox.SelectedItem = sel;
+        _loadingTemplates = false;
     }
 
     private void TemplateBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1280,6 +1303,7 @@ public partial class MainWindow : Window
             {
                 Clipboard.SetText(prompt);
                 _lastCopiedPrompt = prompt;   // 复制成功后才记录，失败允许重试
+                TouchRecentUse();             // 记录"最近使用"并刷新置顶
                 ShowToast("已复制到剪贴板");
             }
             catch (Exception ex)
@@ -1290,8 +1314,20 @@ public partial class MainWindow : Window
         else
         {
             if (await SubmitPrompt(prompt))
+            {
                 _lastSubmittedPrompt = prompt; // 提交成功后才记录，失败允许重试
+                TouchRecentUse();               // 记录"最近使用"并刷新置顶
+            }
         }
+    }
+
+    /// <summary>记录当前模板"最近使用"时间并落盘、刷新置顶显示顺序。</summary>
+    private void TouchRecentUse()
+    {
+        if (_current == null) return;
+        _current.LastUsedAt = DateTime.Now;
+        try { PersistData(); } catch { }
+        RefreshOrderKeepSelection();
     }
 
     private static List<Field> DeepCopyFields(List<Field> src)
@@ -1418,7 +1454,7 @@ public partial class MainWindow : Window
     /// <summary>打开设置弹窗，保存后应用：热键重注册 + 贴边开关持久化。</summary>
     private void OpenSettings()
     {
-        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled) { Owner = this };
+        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates) { Owner = this };
         if (dlg.ShowDialog() != true) return;
 
         bool hotkeyChanged = !string.Equals(dlg.HotkeyText, _settings.Hotkey, StringComparison.OrdinalIgnoreCase);
@@ -1434,6 +1470,7 @@ public partial class MainWindow : Window
         }
 
         _settings.EdgeDockEnabled = dlg.DockEnabled;
+        _settings.PinRecentTemplates = dlg.PinRecentEnabled;
 
         try
         {
@@ -1444,6 +1481,9 @@ public partial class MainWindow : Window
         {
             ShowToast($"保存失败：{ex.Message}", false);
         }
+
+        // 置顶开关可能已变化：重建模板下拉显示顺序（保留当前选中项）
+        RefreshOrderKeepSelection();
     }
 
     // ---------------- 工具 ----------------
