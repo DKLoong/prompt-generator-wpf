@@ -61,9 +61,6 @@ public partial class MainWindow : Window
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
-        // 下拉箭头独立：箭头区专属切换列表；改名态点击箭头忽略并提示（先退出编辑才能浏览/切换）
-        if (TemplateBox.Template?.FindName("toggle", TemplateBox) is System.Windows.Controls.Primitives.ToggleButton toggle)
-            toggle.PreviewMouseLeftButtonDown += Toggle_PreviewMouseLeftButtonDown;
         // 按钮点击后的焦点策略（统一覆盖新增/删除/保存等）：
         // 键盘（Enter/Space）触发的点击保留焦点，保证键盘导航连续（Tab 后 Enter，焦点仍在该按钮）；
         // 鼠标触发的点击清除键盘焦点，避免 IsKeyboardFocused 高亮残留（与既有鼠标行为完全一致）。
@@ -762,24 +759,31 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>单击：全选现有文本，键入即覆盖（不改动展开行为）。改名由"重命名"按钮显式触发。</summary>
+    /// <summary>文本/箭头分区点击：箭头区=切换列表；文本区=全选+输入。改名态点击箭头：忽略并提示先退出编辑。
+    /// 拦截必须在此隧道阶段完成——点击箭头时焦点会移向 ComboBox 触发失焦确认（TryConfirmRename 退出改名态），
+    /// 若等冒泡阶段再拦，改名态已被确认、列表已弹出。</summary>
     private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount == 1)
+        bool onToggle = IsHitOnToggle(e.OriginalSource as DependencyObject);
+        if (_renaming && onToggle)
+        {
+            e.Handled = true;   // 阻止焦点转移与列表切换
+            ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
+            return;
+        }
+        if (e.ClickCount == 1 && !onToggle)
         {
             if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
                 tb.SelectAll();
         }
     }
 
-    /// <summary>箭头区点击：改名态忽略并提示（先退出编辑才能浏览/切换模板）；其余状态正常切换列表。</summary>
-    private void Toggle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    /// <summary>命中测试：点击点是否落在下拉箭头区（模板内 ToggleButton 及其子元素上）。</summary>
+    private static bool IsHitOnToggle(DependencyObject? source)
     {
-        if (_renaming)
-        {
-            e.Handled = true;
-            ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
-        }
+        for (DependencyObject? d = source; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d is ToggleButton) return true;
+        return false;
     }
 
     /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。</summary>
