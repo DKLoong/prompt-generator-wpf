@@ -34,6 +34,10 @@ public partial class MainWindow : Window
     private Template? _pendingNewTemplate;
     /// <summary>历史记录面板当前实例（非空表示已打开）。点击历史按钮在打开/关闭间切换。</summary>
     private HistoryWindow? _historyWindow;
+    /// <summary>上次"生成并复制"成功的提示词；内容未改动时重复复制将被拦截。</summary>
+    private string? _lastCopiedPrompt;
+    /// <summary>上次"生成并提交"成功的提示词；内容未改动时重复提交将被拦截。</summary>
+    private string? _lastSubmittedPrompt;
 
     public MainWindow()
     {
@@ -1143,7 +1147,7 @@ public partial class MainWindow : Window
 
     // ---------------- 生成与执行 ----------------
 
-    private void OnActionExecuted(object? sender, ActionMode mode)
+    private async void OnActionExecuted(object? sender, ActionMode mode)
     {
         if (UpdateDup())
         {
@@ -1156,22 +1160,41 @@ public partial class MainWindow : Window
             ShowToast("内容为空，无法生成", false);
             return;
         }
-        // 写入历史
+        // 相同内容重复操作拦截：自上次成功复制/提交以来内容未改动，不重复复制/提交
+        // （拦截发生在写历史之前，因此重复操作也不会产生重复历史记录）
+        if (mode == ActionMode.Copy)
+        {
+            if (_lastCopiedPrompt == prompt)
+            {
+                ShowToast("当前内容已在剪贴板中，请勿重复操作", false);
+                return;
+            }
+        }
+        else if (_lastSubmittedPrompt == prompt)
+        {
+            ShowToast("当前内容已提交，请勿重复操作", false);
+            return;
+        }
+        // 写入历史（历史中已有相同提示词则不重复写入，避免重复记录；拦截与历史去重双保险）
         var entry = new HistoryEntry
         {
             TemplateName = _current?.Name ?? "",
             Fields = DeepCopyFields(_current?.Fields ?? new List<Field>()),
             Prompt = prompt
         };
-        _data.History.Insert(0, entry);
-        if (_data.History.Count > 50) _data.History.RemoveRange(50, _data.History.Count - 50);
-         try { PersistData(); } catch { }
+        if (_data.History.All(h => h.Prompt != prompt))
+        {
+            _data.History.Insert(0, entry);
+            if (_data.History.Count > 50) _data.History.RemoveRange(50, _data.History.Count - 50);
+            try { PersistData(); } catch { }
+        }
 
         if (mode == ActionMode.Copy)
         {
             try
             {
                 Clipboard.SetText(prompt);
+                _lastCopiedPrompt = prompt;   // 复制成功后才记录，失败允许重试
                 ShowToast("已复制到剪贴板");
             }
             catch (Exception ex)
@@ -1181,7 +1204,8 @@ public partial class MainWindow : Window
         }
         else
         {
-            SubmitPrompt(prompt);
+            if (await SubmitPrompt(prompt))
+                _lastSubmittedPrompt = prompt; // 提交成功后才记录，失败允许重试
         }
     }
 
@@ -1195,7 +1219,7 @@ public partial class MainWindow : Window
         return list;
     }
 
-    private async void SubmitPrompt(string prompt)
+    private async Task<bool> SubmitPrompt(string prompt)
     {
         ShowToast("正在提交 claude…");
         try
@@ -1229,10 +1253,12 @@ public partial class MainWindow : Window
             });
             MessageBox.Show(result.Item2, result.Item1 ? "claude 返回" : "提交失败",
                 MessageBoxButton.OK, result.Item1 ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            return result.Item1;
         }
         catch (Exception ex)
         {
             ShowToast($"提交失败：{ex.Message}", false);
+            return false;
         }
     }
 
