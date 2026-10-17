@@ -6,7 +6,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="提示词生成器"
         Icon="Assets/app-icon.png"
-        Width="365" Height="600" MinWidth="365" MinHeight="430"
+        Width="470" Height="700" MinWidth="365" MinHeight="430"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResize" WindowStartupLocation="Manual" Topmost="True"
         ShowInTaskbar="True" Closing="Window_Closing">
@@ -15,30 +15,6 @@
         <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
                             GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
-    <Window.Resources>
-        <!-- 托盘图标：紫色圆角方块 + 白色终端提示符 >_ -->
-        <DrawingImage x:Key="TrayIconImage">
-            <DrawingImage.Drawing>
-                <DrawingGroup>
-                    <GeometryDrawing Brush="#7c6cf0">
-                        <GeometryDrawing.Geometry>
-                            <RectangleGeometry Rect="0,0,16,16" RadiusX="3" RadiusY="3" />
-                        </GeometryDrawing.Geometry>
-                    </GeometryDrawing>
-                    <GeometryDrawing Geometry="M 2.5,4 L 7,8 L 2.5,12">
-                        <GeometryDrawing.Pen>
-                            <Pen Brush="White" Thickness="1.6" StartLineCap="Round" EndLineCap="Round" />
-                        </GeometryDrawing.Pen>
-                    </GeometryDrawing>
-                    <GeometryDrawing Geometry="M 7.5,11.5 L 13.5,11.5">
-                        <GeometryDrawing.Pen>
-                            <Pen Brush="White" Thickness="1.6" StartLineCap="Round" EndLineCap="Round" />
-                        </GeometryDrawing.Pen>
-                    </GeometryDrawing>
-                </DrawingGroup>
-            </DrawingImage.Drawing>
-        </DrawingImage>
-    </Window.Resources>
     <Border CornerRadius="10" Background="{StaticResource BgBrush}"
             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
         <Grid>
@@ -161,7 +137,7 @@
                 <TextBlock x:Name="Toast" FontSize="12" Foreground="{StaticResource OkBrush}" />
             </Border>
 
-            <!-- 托盘图标（不可见元素，托盘独立渲染；IconSource 在代码中生成位图） -->
+            <!-- 托盘图标（不可见元素，不参与布局；IconSource 在代码中从 Assets/app-icon.png 加载） -->
             <tb:TaskbarIcon x:Name="TrayIcon" Grid.Row="0"
                             ToolTipText="提示词生成器（左键显示/隐藏，右键菜单）"
                             TrayLeftMouseUp="TrayToggle_Click">
