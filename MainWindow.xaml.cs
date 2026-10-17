@@ -665,6 +665,7 @@ public partial class MainWindow : Window
             }
         }
         LoadCurrentTemplate();
+        if (pick) FocusFirstInput();   // 鼠标点击候选项=确认切换：退出编辑态，聚焦第一个内容框段首（显示态保持灰字）
     }
 
     /// <summary>空白新模板判定：名字仍是默认"新模板"，且所有字段名/内容都为空。</summary>
@@ -840,11 +841,11 @@ public partial class MainWindow : Window
         !_renaming && !_filterActive && _current != null
         && string.Equals(TemplateBox.Text?.Trim(), _current.Name?.Trim(), StringComparison.Ordinal);
 
-    /// <summary>按状态切换编辑框文字颜色：显示态灰字（只读占位符感）；输入态/过滤态/改名态黑字。</summary>
+    /// <summary>按状态切换编辑框文字颜色：显示态灰字（只读占位符感）；输入态/过滤态/改名态用主题前景色（暗底白字可辨）。</summary>
     private void UpdateTemplateBoxVisual()
     {
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
-            tb.Foreground = IsDisplayMode() ? Brushes.Gray : Brushes.Black;
+            tb.Foreground = IsDisplayMode() ? Brushes.Gray : TemplateBox.Foreground;
     }
 
     /// <summary>字符输入前（隧道阶段）先进入过滤态并展开下拉，使随后由视图/ComboBox 触发的选中变化被过滤态屏蔽，避免输入即自动切换模板。</summary>
@@ -1155,12 +1156,20 @@ public partial class MainWindow : Window
         var t = new Template { Name = "新模板" };
         t.Fields.Add(new Field { Name = "", Items = { "" } });
         _data.Templates.Add(t);
+        // 重建显示视图（_templatesView 是静态快照，不反映新增），退出过滤态，选中新模板并回填文本
         _loadingTemplates = true;
+        _filterActive = false;
+        _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+        _templatesView.Filter = null;
+        TemplateBox.ItemsSource = _templatesView;
+        TemplateBox.DisplayMemberPath = nameof(PromptGenerator.Models.Template.Name);
         TemplateBox.SelectedItem = t;
+        TemplateBox.Text = t.Name;
         _loadingTemplates = false;
         _current = t;
         _pendingNewTemplate = t;
         RenderFields();
+        UpdateTemplateBoxVisual();
         // 新模板首字段名默认为空，直接聚焦字段名框并全选，便于立即输入
         FocusFieldName(0);
         Logging.Info($"新增模板：id={t.Id}");
@@ -2093,15 +2102,21 @@ public partial class MainWindow : Window
 
     private void FocusFieldName(int rowIndex)
     {
-        Dispatcher.BeginInvoke(() =>
+        void FocusRow()
         {
             var rows = FieldHost.Children.OfType<Grid>().ToList();
+            Logging.Debug($"FocusRow rows={rows.Count} idx={rowIndex}");
             if (rowIndex >= rows.Count) return;
             var head = rows[rowIndex].Children.OfType<Grid>().FirstOrDefault();
             var tb = head?.Children.OfType<TextBox>().FirstOrDefault();
+            Logging.Debug($"FocusRow tb={tb != null} kind={tb?.GetType().Name}");
             tb?.Focus();
             Keyboard.Focus(tb);
-        }, DispatcherPriority.Loaded);
+            Logging.Debug($"FocusRow afterFocus={Keyboard.FocusedElement?.GetType().Name}");
+        }
+        Dispatcher.BeginInvoke(FocusRow, DispatcherPriority.Loaded);
+        // 双保险：新建模板时 ItemsSource 重建/ComboBox 异步聚焦会抢回焦点（日志实证），Background 级最后聚焦确保落在字段名框
+        Dispatcher.BeginInvoke(FocusRow, DispatcherPriority.Background);
     }
 
     /// <summary>聚焦到指定字段行的某个内容框。<paramref name="caretToEnd"/> 为 true 时光标落在文本末尾。</summary>
