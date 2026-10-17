@@ -43,6 +43,15 @@ public partial class MainWindow : Window
     private bool _filterActive;
     /// <summary>双击改名态：框内文本作为新模板名编辑，Enter/失焦确认，Esc 取消。</summary>
     private bool _renaming;
+
+    /// <summary>异步回写免疫现场：RefreshFilteredList 置空选中项后，ComboBox 异步把 Text 回写为旧选中项名；
+    /// 该回写晚于 _loadingTemplates 短路期，TextChanged 据此识别并恢复用户输入、保持过滤态。</summary>
+    private bool _filterResetPending;
+    private string _filterResetText = "";
+
+    /// <summary>本次文本变化是否源于用户键入（PreviewTextInput 置位，TextChanged 过滤分支消费）。
+    /// 为 true 时进入编辑态（置 null + SetCurrentValue 恢复过滤词）；方向键导航（false）保留 SelectedItem，维持候选项高亮。</summary>
+    private bool _userTyping;
     /// <summary>模板下拉的集合视图：ItemsSource 常驻此视图，过滤只切换 Filter 谓词，
     /// 避免重建 ItemsSource 破坏 IsEditable 下拉的输入与选中态（首字符被吞、方向键高亮丢失的根因）。</summary>
     private ICollectionView? _templatesView;
@@ -106,6 +115,7 @@ public partial class MainWindow : Window
         // 加载后对每个已有模板存快照
         foreach (var t in _data.Templates) SaveSnapshot(t);
         Loaded += OnLoaded;
+        Logging.Info($"MainWindow 构造完成，模板数={_data.Templates.Count} 热键={_settings.Hotkey}");
     }
 
     // ---------------- ToolTip 键盘聚焦（即时弹出） ----------------
@@ -172,9 +182,11 @@ public partial class MainWindow : Window
         if (IsVisible && WindowState != WindowState.Minimized)
         {
             Hide();
+            Logging.Debug("ToggleWindow: 隐藏");
         }
         else
         {
+            Logging.Debug("ToggleWindow: 显示");
             WindowState = WindowState.Normal;
             Show();
             Activate();
@@ -208,6 +220,7 @@ public partial class MainWindow : Window
             if (r != MessageBoxResult.Yes) return;
         }
         _allowClose = true;
+        Logging.Info("托盘退出：关闭程序");
         Application.Current.Shutdown();
     }
 
@@ -227,6 +240,7 @@ public partial class MainWindow : Window
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        Logging.Debug("OnLoaded: 刷新模板列表并注册热键");
         RefreshTemplateBox();
         FocusFirstInput();
         UpdatePinVisual();
@@ -317,8 +331,10 @@ public partial class MainWindow : Window
         _hotkey.HotkeyPressed += ToggleWindow;
         if (_hotkey.TryRegister(_settings.Hotkey, out var reason))
         {
+            Logging.Info($"全局热键注册成功：{_settings.Hotkey}");
             return;
         }
+        Logging.Warn($"全局热键注册失败：{_settings.Hotkey}，原因={reason}");
         TrayIcon.ShowBalloonTip("全局热键注册失败", reason, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Warning);
     }
 
@@ -457,6 +473,7 @@ public partial class MainWindow : Window
     /// <summary>滑出展开：位置钳制在工作区内，并把光标吸进窗口避免边缘抖动。</summary>
     private void Expand()
     {
+        Logging.Debug("贴边展开");
         _expanded = true;
         _leftAt = DateTime.MinValue;
         var wa = SystemParameters.WorkArea;
@@ -474,6 +491,7 @@ public partial class MainWindow : Window
     /// <summary>收回贴边：回到收起位置。</summary>
     private void Collapse()
     {
+        Logging.Debug("贴边收回");
         _expanded = false;
         _leftAt = DateTime.MinValue;
         // 收回前关闭模板下拉框：窗口滑到屏幕外后，Popup 不会自动跟随隐藏，会残留在桌面上
@@ -583,6 +601,7 @@ public partial class MainWindow : Window
         if (_loadingTemplates) return;
         if (_renaming) return;   // 改名态：编辑文本引发的选中变化不切换模板、不恢复快照、不重渲染字段
         if (_filterActive) return;   // 过滤态：选中变化只是"高亮候选"，Enter 确认时才切换模板
+        Logging.Debug($"SelChanged sel={(TemplateBox.SelectedItem as Template)?.Name} filter={_filterActive} loading={_loadingTemplates}");
         // 离开当前模板前：
         // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
         //   除当前模板外，也清理列表中残留的其他历史编辑模板——例如：编辑历史A后未切走
@@ -691,8 +710,41 @@ public partial class MainWindow : Window
         if (_renaming) return;
         string text = TemplateBox.Text.Trim();
         bool equalsCurrent = string.Equals(text, _current.Name?.Trim(), StringComparison.Ordinal);
+        Logging.Debug($"TextChanged text={TemplateBox.Text} filter={_filterActive} renaming={_renaming} equals={equalsCurrent} focus={Keyboard.FocusedElement?.GetType().Name}");
         if (string.IsNullOrEmpty(text) || equalsCurrent)
         {
+            // 回写免疫：视图 Refresh() 后 ComboBox 异步把 Text 回写为当前模板名（日志实证，回写时选中项非空），
+            // 该文本并非用户本次输入 → 恢复过滤词并保持过滤态。
+            // 恢复必须用 SetCurrentValue（与用户键入同路径，ComboBox 视为编辑态不校正）；
+            // SetValue/TextBox 直设都会触发 ComboBox 的一致性校正（清空或回写，日志实证）。
+            if (_filterActive && _filterResetPending && equalsCurrent
+                && !string.Equals(text, _filterResetText, StringComparison.Ordinal))
+            {
+                Logging.Debug($"IgnoreAsyncReset text={TemplateBox.Text} restore={_filterResetText}");
+                _filterResetPending = false;
+                _loadingTemplates = true;
+                TemplateBox.SetCurrentValue(ComboBox.TextProperty, _filterResetText);
+                _loadingTemplates = false;
+                return;
+            }
+            // 用户删除/清空导致空文本：进入编辑态（置 null）防止 ComboBox 把空文本回写为选中项名（日志实证）
+            if (string.IsNullOrEmpty(text))
+            {
+                _userTyping = false;
+                _filterResetPending = false;
+                if (TemplateBox.SelectedItem != null)
+                {
+                    _loadingTemplates = true;
+                    TemplateBox.SelectedItem = null;
+                    _loadingTemplates = false;
+                }
+                if (_filterActive)
+                {
+                    _filterActive = false;
+                    RefreshFilteredList();
+                }
+                return;
+            }
             // 空文本或恰好等于当前模板名：视为回到选中态，恢复全量列表
             if (_filterActive)
             {
@@ -701,9 +753,27 @@ public partial class MainWindow : Window
             }
             return;
         }
-        // 用户输入过滤词：展开下拉显示过滤结果
+        // 用户输入过滤词：记录过滤词与免疫现场，展开下拉显示过滤结果。
+        // 仅当文本变化源于用户键入（_userTyping）才进入编辑态（置 null + SetCurrentValue 恢复过滤词）：
+        // 置 null 的 UpdateText 会清空文本（日志实证），需 SetCurrentValue（与键入同路径）恢复；
+        // 方向键导航（_userTyping=false）保留 SelectedItem，维持候选项高亮与 Enter 确认语义。
+        _filterResetPending = true;
+        _filterResetText = text;
         _filterActive = true;
         if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
+        if (_userTyping)
+        {
+            _userTyping = false;
+            if (TemplateBox.SelectedItem != null)
+            {
+                _loadingTemplates = true;
+                TemplateBox.SelectedItem = null;
+                _loadingTemplates = false;
+            }
+            _loadingTemplates = true;
+            TemplateBox.SetCurrentValue(ComboBox.TextProperty, text);
+            _loadingTemplates = false;
+        }
         RefreshFilteredList();
     }
 
@@ -711,40 +781,38 @@ public partial class MainWindow : Window
     private void TemplateBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
     {
         if (_renaming || _current == null) return;
+        _filterResetPending = false;   // 新一轮真实输入：异步回写免疫失效，由本次输入接管
+        _userTyping = true;            // 标记本次文本变化来自用户键入（TextChanged 过滤分支消费）
+        Logging.Debug($"PreviewTextInput focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text} filter={_filterActive}");
         _filterActive = true;
         if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
     }
 
     /// <summary>按当前过滤词切换视图过滤：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；只改 Filter 谓词，不重建 ItemsSource。
-    /// 文本属于"用户输入的新词"时复位选中项与文本，防止视图 CurrentItem 驱动 ComboBox 选中/回写（输入被替换为匹配项名）；
-    /// 文本等于当前选中项名（方向键同步）时保留选中，保证方向键选取/高亮不被破坏。</summary>
+    /// 不复位 SelectedItem/Text：用户输入经免疫恢复走编辑框路径（编辑态），ComboBox 不校正；
+    /// 选中项保持原值，方向键在过滤视图中正常导航，Enter 由命中校验把关。</summary>
     private void RefreshFilteredList()
     {
         if (_templatesView == null) return;
         string keepText = TemplateBox.Text;
+        Logging.Debug($"Refresh keep={keepText} filter={_filterActive} sel={(TemplateBox.SelectedItem as Template)?.Name}");
         _templatesView.Filter = _filterActive
             ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
             : null;
+        // Refresh() 会触发 ComboBox 内部把 Text 同步回写为当前选中项名（日志实证），该回写的 TextChanged
+        // 会被误判"回到选中态"而取消过滤；用 _loadingTemplates 包住，使该次回写短路，保持过滤态与用户输入。
+        _loadingTemplates = true;
         _templatesView.Refresh();
-        if (_filterActive)
-        {
-            var sel = TemplateBox.SelectedItem as Template;
-            bool textIsSelection = sel != null
-                && string.Equals(TemplateBox.Text.Trim(), sel.Name?.Trim(), StringComparison.Ordinal);
-            if (!textIsSelection)
-            {
-                _loadingTemplates = true;
-                TemplateBox.SelectedItem = null;
-                TemplateBox.Text = keepText;
-                _loadingTemplates = false;
-            }
-        }
+        _loadingTemplates = false;
+        Logging.Debug($"RefreshEnd keep={keepText} filter={_filterActive} text={TemplateBox.Text} sel={(TemplateBox.SelectedItem as Template)?.Name}");
     }
 
     /// <summary>清空过滤：回填当前模板名并恢复全量列表（Esc 第一级）。</summary>
     private void ClearFilter()
     {
         if (!_filterActive) return;
+        _userTyping = false;          // 离开过滤态：编辑标记失效
+        _filterResetPending = false;   // 离开过滤态：免疫现场失效
         _filterActive = false;
         _loadingTemplates = true;
         TemplateBox.Text = _current?.Name ?? "";
@@ -765,6 +833,7 @@ public partial class MainWindow : Window
     private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         bool onToggle = IsHitOnToggle(e.OriginalSource as DependencyObject);
+        Logging.Debug($"MouseDown onToggle={onToggle} focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text}");
         if (_renaming && onToggle)
         {
             e.Handled = true;   // 阻止焦点转移与列表切换
@@ -804,6 +873,7 @@ public partial class MainWindow : Window
     /// <summary>失焦时若处于改名态则确认改名（焦点已移走，无需再安排落点）。</summary>
     private void TemplateBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
+        Logging.Debug($"LostFocus renaming={_renaming} newFocus={e.NewFocus?.GetType().Name}");
         if (_renaming) TryConfirmRename();
     }
 
@@ -874,6 +944,7 @@ public partial class MainWindow : Window
         RenderFields();
         // 新模板首字段名默认为空，直接聚焦字段名框并全选，便于立即输入
         FocusFieldName(0);
+        Logging.Info($"新增模板：id={t.Id}");
         ShowToast("已创建新模板");
     }
 
@@ -893,6 +964,7 @@ public partial class MainWindow : Window
         try { _store.Save(_data); } catch { }
         RefreshTemplateBox();
         TemplateBox.Focus();
+        Logging.Info($"删除模板：{current.Name}");
         ShowToast("已删除模板");
     }
 
@@ -919,10 +991,12 @@ public partial class MainWindow : Window
             _store.Save(_data);
             SaveSnapshot(_current);   // 更新已保存快照
             _pendingNewTemplate = null;   // 已保存，允许再次新增
+            Logging.Info($"保存模板：{_current.Name}");
             ShowToast("已保存到模板");
         }
         catch (Exception ex)
         {
+            Logging.Error($"保存模板失败：{_current.Name}，原因={ex.Message}");
             ShowToast($"保存失败：{ex.Message}", false);
         }
     }
@@ -1391,6 +1465,10 @@ public partial class MainWindow : Window
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // 过滤态下 Backspace/Delete：标记为用户编辑（进入编辑态置 null，防止回写选中项名）；
+        // 方向键不动标志（导航保留选中高亮）。
+        if (_filterActive && !_renaming && (e.Key == Key.Back || e.Key == Key.Delete))
+            _userTyping = true;
         // ESC：改名态→取消改名（焦点回模板框）；过滤态→先清过滤恢复全列表，再按收起；下拉展开→交还下拉收起；其余→关闭窗口
         if (e.Key == Key.Escape)
         {
@@ -1458,10 +1536,17 @@ public partial class MainWindow : Window
             }
             if (TemplateBox.IsDropDownOpen)
             {
-                if (_filterActive && TemplateBox.SelectedItem == null)
+                if (_filterActive)
                 {
-                    e.Handled = true;   // 无匹配：保持过滤词，不动作
-                    return;
+                    // 过滤命中校验：选中项为空或不在过滤结果内 → 视为无匹配
+                    var filteredSel = TemplateBox.SelectedItem as Template;
+                    bool hit = filteredSel != null
+                        && filteredSel.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
+                    if (!hit)
+                    {
+                        e.Handled = true;   // 无匹配：保持过滤词，不动作
+                        return;
+                    }
                 }
                 TemplateBox.IsDropDownOpen = false;
                 if (_filterActive && TemplateBox.SelectedItem is Template sel)
@@ -1533,15 +1618,18 @@ public partial class MainWindow : Window
                 Clipboard.SetText(prompt);
                 _lastCopiedPrompt = prompt;   // 复制成功后才记录，失败允许重试
                 TouchRecentUse();             // 记录"最近使用"并刷新置顶
+                Logging.Prompt(LogLevel.Info, "复制", _current?.Name, prompt);
                 ShowToast("已复制到剪贴板");
             }
             catch (Exception ex)
             {
+                Logging.Error($"复制到剪贴板失败，原因={ex.Message}");
                 ShowToast($"复制失败：{ex.Message}", false);
             }
         }
         else
         {
+            Logging.Prompt(LogLevel.Info, "提交", _current?.Name, prompt);
             if (await SubmitPrompt(prompt))
             {
                 _lastSubmittedPrompt = prompt; // 提交成功后才记录，失败允许重试
@@ -1571,6 +1659,8 @@ public partial class MainWindow : Window
 
     private async Task<bool> SubmitPrompt(string prompt)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Logging.Info($"开始提交 claude：prompt 长度={prompt.Length}");
         ShowToast("正在提交 claude…");
         try
         {
@@ -1601,12 +1691,19 @@ public partial class MainWindow : Window
                 if (text.Length == 0) text = (stderr ?? "").Trim();
                 return (true, text.Length == 0 ? "(无输出)" : text);
             });
+            sw.Stop();
+            if (result.Item1)
+                Logging.Info($"claude 提交成功：耗时={sw.ElapsedMilliseconds}ms 输出长度={result.Item2.Length}");
+            else
+                Logging.Warn($"claude 提交失败：耗时={sw.ElapsedMilliseconds}ms 原因={result.Item2}");
             MessageBox.Show(result.Item2, result.Item1 ? "claude 返回" : "提交失败",
                 MessageBoxButton.OK, result.Item1 ? MessageBoxImage.Information : MessageBoxImage.Warning);
             return result.Item1;
         }
         catch (Exception ex)
         {
+            sw.Stop();
+            Logging.Error($"claude 提交异常：耗时={sw.ElapsedMilliseconds}ms", ex);
             ShowToast($"提交失败：{ex.Message}", false);
             return false;
         }
