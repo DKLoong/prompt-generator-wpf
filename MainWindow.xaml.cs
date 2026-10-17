@@ -794,8 +794,19 @@ public partial class MainWindow : Window
             _loadingTemplates = true;
             TemplateBox.SetCurrentValue(ComboBox.TextProperty, text);
             _loadingTemplates = false;
+            SetCaretToEnd();   // 置 null 的 UpdateText 会把 caret 归零，恢复过滤词后移回末尾（继续键入追加在段尾）
         }
         RefreshFilteredList();
+    }
+
+    /// <summary>把模板框编辑文本框的光标移到文本末尾并取消选中：置 null/SetCurrentValue 恢复文本后 caret 会停在段首。</summary>
+    private void SetCaretToEnd()
+    {
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+        {
+            tb.CaretIndex = tb.Text.Length;
+            tb.SelectionLength = 0;
+        }
     }
 
     /// <summary>字符输入前（隧道阶段）先进入过滤态并展开下拉，使随后由视图/ComboBox 触发的选中变化被过滤态屏蔽，避免输入即自动切换模板。</summary>
@@ -1592,6 +1603,7 @@ public partial class MainWindow : Window
             TemplateBox.SelectedIndex = next;       // 高亮候选项（IsSelected 紫）
             TemplateBox.SetCurrentValue(ComboBox.TextProperty, filterText);   // 框内保持过滤词（编辑态路径，不触发一致性校正）
             _loadingTemplates = false;
+            SetCaretToEnd();   // 恢复过滤词后 caret 归零，移回末尾（继续键入追加在段尾）
             e.Handled = true;
             return;
         }
