@@ -734,6 +734,7 @@ public partial class MainWindow : Window
     {
         if (_loadingTemplates || _current == null) return;
         if (_renaming) return;
+        UpdateTemplateBoxVisual();   // 文本变化后刷新显示态灰字/编辑态黑字
         string text = TemplateBox.Text.Trim();
         bool equalsCurrent = string.Equals(text, _current.Name?.Trim(), StringComparison.Ordinal);
         Logging.Debug($"TextChanged text={TemplateBox.Text} filter={_filterActive} renaming={_renaming} equals={equalsCurrent} focus={Keyboard.FocusedElement?.GetType().Name}");
@@ -833,12 +834,35 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>显示态判定：非改名、非过滤，且框内文本即当前模板名。显示态模板名只读呈现（灰字占位符），
+    /// 点击文本/键入才清空进入输入态（空框检索，无全选/替换冲突）。</summary>
+    private bool IsDisplayMode() =>
+        !_renaming && !_filterActive && _current != null
+        && string.Equals(TemplateBox.Text?.Trim(), _current.Name?.Trim(), StringComparison.Ordinal);
+
+    /// <summary>按状态切换编辑框文字颜色：显示态灰字（只读占位符感）；输入态/过滤态/改名态黑字。</summary>
+    private void UpdateTemplateBoxVisual()
+    {
+        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+            tb.Foreground = IsDisplayMode() ? Brushes.Gray : Brushes.Black;
+    }
+
     /// <summary>字符输入前（隧道阶段）先进入过滤态并展开下拉，使随后由视图/ComboBox 触发的选中变化被过滤态屏蔽，避免输入即自动切换模板。</summary>
     private void TemplateBox_PreviewTextInput(object sender, TextCompositionEventArgs e)
     {
         if (_renaming || _current == null) return;
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
             Logging.Debug($"PTextInput sel={tb.SelectionLength} caret={tb.CaretIndex} text={tb.Text}");
+        if (IsDisplayMode())
+        {
+            // 显示态键入：先清空进入输入态（置 null 防回写），随后的字符输入到空框并触发检索
+            _loadingTemplates = true;
+            TemplateBox.SelectedItem = null;
+            TemplateBox.SetCurrentValue(ComboBox.TextProperty, "");
+            _loadingTemplates = false;
+            UpdateTemplateBoxVisual();
+            Logging.Debug($"PTextInput enterInput text={TemplateBox.Text}");
+        }
         _filterResetPending = false;   // 新一轮真实输入：异步回写免疫失效，由本次输入接管
         _userTyping = true;            // 标记本次文本变化来自用户键入（TextChanged 过滤分支消费）
         Logging.Debug($"PreviewTextInput focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text} filter={_filterActive}");
@@ -876,6 +900,7 @@ public partial class MainWindow : Window
         TemplateBox.Text = _current?.Name ?? "";
         _loadingTemplates = false;
         RefreshFilteredList();
+        UpdateTemplateBoxVisual();   // 恢复显示态：灰字
         // 过滤态方向键可能已选中候选：Esc 后恢复选中指向当前模板
         if (_current != null && TemplateBox.SelectedItem != _current)
         {
@@ -885,19 +910,31 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>文本/箭头分区点击：箭头区=切换列表；文本区=正常光标定位（TextBox 原生行为：单击定位、双击选词），
-    /// 不做强制全选——用户微调过滤词时点击定位光标、输入在光标处插入（覆盖全文可 Ctrl+A 或双击）。改名态点击箭头：忽略并提示先退出编辑。
+    /// <summary>文本/箭头分区点击：箭头区=切换列表；文本区=显示态清空进入输入态（空框检索，无全选/替换冲突）、
+    /// 输入态正常光标定位（TextBox 原生：单击定位、双击选词）。改名态点击箭头：忽略并提示先退出编辑。
     /// 拦截必须在此隧道阶段完成——点击箭头时焦点会移向 ComboBox 触发失焦确认（TryConfirmRename 退出改名态），
     /// 若等冒泡阶段再拦，改名态已被确认、列表已弹出。</summary>
     private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         bool onToggle = IsHitOnToggle(e.OriginalSource as DependencyObject);
-        Logging.Debug($"MouseDown onToggle={onToggle} focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text}");
+        Logging.Debug($"MouseDown onToggle={onToggle} src={e.OriginalSource?.GetType().Name} anc={AncestorChain(e.OriginalSource as DependencyObject)} focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text}");
         if (_renaming && onToggle)
         {
             e.Handled = true;   // 阻止焦点转移与列表切换
             ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
             return;
+        }
+        if (!_renaming && !onToggle && IsDisplayMode())
+        {
+            // 显示态点击文本：清空进入输入态（置 null + 编辑态语义，防 ComboBox 聚焦时校正回写选中项名）。
+            // 首次点击（焦点从未聚焦移到 TextBox）的聚焦校正由 TemplateBox_GotKeyboardFocus 的延迟补偿兜底。
+            _userTyping = true;
+            _loadingTemplates = true;
+            TemplateBox.SelectedItem = null;
+            TemplateBox.SetCurrentValue(ComboBox.TextProperty, "");
+            _loadingTemplates = false;
+            UpdateTemplateBoxVisual();
+            Logging.Debug($"MouseDown enterInput text={TemplateBox.Text}");
         }
     }
 
@@ -951,6 +988,15 @@ public partial class MainWindow : Window
         return false;
     }
 
+    /// <summary>调试用：打印元素祖先链类型（定位命中判定来源）。</summary>
+    private static string AncestorChain(DependencyObject? node)
+    {
+        var names = new List<string>();
+        for (DependencyObject? d = node; d != null && names.Count < 8; d = VisualTreeHelper.GetParent(d))
+            names.Add(d.GetType().Name);
+        return string.Join(">", names);
+    }
+
     /// <summary>命中测试：点击点是否落在下拉列表项（Popup 内 ComboBoxItem）上——点击候选项=确认选择。</summary>
     private static bool IsHitOnComboBoxItem(DependencyObject? source)
     {
@@ -974,11 +1020,43 @@ public partial class MainWindow : Window
         _renaming = true;
         TemplateBox.IsDropDownOpen = false;
         TemplateBox.Text = _current.Name ?? "";
+        UpdateTemplateBoxVisual();   // 改名态：黑字可编辑
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
             tb.Focus();
             tb.SelectAll();
         }
+    }
+
+    /// <summary>模板框获得键盘焦点：鼠标点击聚焦（且当前为显示态）时，延迟到 ComboBox 聚焦全选/校正完成后清空进入输入态——
+    /// 消除"点击模板框全选闪烁、光标落到段首"（启动后首次点击的 MouseDown 可能被窗口激活流程消耗，聚焦校正会回写选中项名）。
+    /// Tab/键盘聚焦（鼠标不在编辑框上）保持显示态，不进入输入态。</summary>
+    private void TemplateBox_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (_renaming || _current == null) return;
+        if (!IsDisplayMode()) return;
+        // 仅"鼠标点击编辑框"聚焦才进入输入态（点箭头聚焦 ToggleButton 不算）；Tab 聚焦保持显示态
+        bool mouseOnText = IsWithinTextBox(Mouse.DirectlyOver as DependencyObject);
+        if (!mouseOnText) return;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            if (_renaming || _current == null || !IsDisplayMode()) return;
+            _userTyping = true;
+            _loadingTemplates = true;
+            TemplateBox.SelectedItem = null;
+            TemplateBox.SetCurrentValue(ComboBox.TextProperty, "");
+            _loadingTemplates = false;
+            UpdateTemplateBoxVisual();
+            Logging.Debug($"GotFocus enterInput(deferred) text={TemplateBox.Text}");
+        });
+    }
+
+    /// <summary>命中测试：元素（或其祖先）是否落在模板框的编辑文本框（PART_EditableTextBox）内。</summary>
+    private static bool IsWithinTextBox(DependencyObject? node)
+    {
+        for (DependencyObject? d = node; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d is TextBox) return true;
+        return false;
     }
 
     /// <summary>失焦：改名态→确认改名（焦点已移走，无需再安排落点）；
@@ -1004,6 +1082,7 @@ public partial class MainWindow : Window
                 TemplateBox.SelectedItem = _current;
             _loadingTemplates = false;
             RefreshFilteredList();
+            UpdateTemplateBoxVisual();   // 恢复显示态：灰字
         }
     }
 
@@ -1047,6 +1126,7 @@ public partial class MainWindow : Window
             TemplateBox.SelectedItem = _current;
             _loadingTemplates = false;
         }
+        UpdateTemplateBoxVisual();   // 退出改名态：恢复显示态灰字
         return true;
     }
 
@@ -1056,6 +1136,7 @@ public partial class MainWindow : Window
         if (!_renaming) return;
         _renaming = false;
         TemplateBox.Text = _current?.Name ?? "";
+        UpdateTemplateBoxVisual();   // 恢复显示态灰字
     }
 
     private void LoadCurrentTemplate()
@@ -1635,6 +1716,19 @@ public partial class MainWindow : Window
             ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
             return;
         }
+        // 显示态：F4/Alt+Down 弹列表浏览（不改只读模板名）；↓ 首次弹列表，列表已开则交导航块
+        if (IsDisplayMode() && (e.Key == Key.F4 || (e.Key == Key.Down && Keyboard.Modifiers == ModifierKeys.Alt)))
+        {
+            e.Handled = true;
+            if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
+            return;
+        }
+        if (IsDisplayMode() && e.Key == Key.Down && !TemplateBox.IsDropDownOpen)
+        {
+            e.Handled = true;
+            TemplateBox.IsDropDownOpen = true;
+            return;
+        }
         // Ctrl+Enter：生成并复制
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
         {
@@ -1649,12 +1743,12 @@ public partial class MainWindow : Window
             SaveTemplate_Click(this, new RoutedEventArgs());
             return;
         }
-        // 过滤态 + 下拉展开：接管方向键导航。编辑态 SelectedItem=null 时 ComboBox 原生键盘导航被 TextBox
+        // 过滤态/显示态弹列表 + 下拉展开：接管方向键导航。编辑态 SelectedItem=null 时 ComboBox 原生键盘导航被 TextBox
         // 吞掉（↓ 无响应）；或导航文本同步被免疫误判恢复为过滤词。此处显式在过滤视图中移动选中：
         // SelectedIndex 变化驱动候选项 IsSelected 紫色高亮，随后用编辑态路径（SetCurrentValue）把框内文本
-        // 恢复为过滤词——导航只移高亮、不改用户输入；Enter 才确认切换。_loadingTemplates 短路
+        // 恢复为过滤词（显示态=模板名）——导航只移高亮、不改用户输入；Enter 才确认切换。_loadingTemplates 短路
         // TextChanged/SelectionChanged，免疫不介入。
-        if (_filterActive && !_renaming && TemplateBox.IsDropDownOpen && (e.Key == Key.Down || e.Key == Key.Up))
+        if (!_renaming && TemplateBox.IsDropDownOpen && (_filterActive || IsDisplayMode()) && (e.Key == Key.Down || e.Key == Key.Up))
         {
             int count = _templatesView?.Cast<object>().Count() ?? 0;
             if (count == 0) { e.Handled = true; return; }
@@ -1688,7 +1782,7 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
-        // Enter：改名态→确认改名并焦点到第一个字段名框；展开态→选中当前项、回填文本、收起、焦点到第一个内容框；过滤无匹配→不动作
+        // Enter：改名态→确认改名并焦点到第一个字段名框；显示态（下拉关）→进入第一个字段；展开态→选中当前项、回填文本、收起、焦点到第一个内容框；过滤无匹配→不动作
         if (e.Key == Key.Enter)
         {
             if (_renaming)
@@ -1696,6 +1790,12 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 if (TryConfirmRename()) FocusFieldName(0);   // 改名确认后进入该模板第一个字段框
                 return;   // 重名时留在改名态
+            }
+            if (IsDisplayMode() && !TemplateBox.IsDropDownOpen)
+            {
+                e.Handled = true;
+                FocusFirstInput();   // 显示态 Enter（未开列表）：直接进入第一个字段
+                return;
             }
             if (TemplateBox.IsDropDownOpen)
             {
@@ -1712,14 +1812,15 @@ public partial class MainWindow : Window
                     }
                 }
                 TemplateBox.IsDropDownOpen = false;
-                if (_filterActive && TemplateBox.SelectedItem is Template sel)
+                if ((_filterActive || IsDisplayMode()) && TemplateBox.SelectedItem is Template sel)
                 {
-                    // 过滤态确认：切换模板由本处显式完成（过滤态 SelectionChanged 已屏蔽自动切换）
+                    // 过滤态/显示态弹列表导航确认：切换模板（过滤态 SelectionChanged 已屏蔽自动切换）
                     _filterActive = false;
                     _loadingTemplates = true;
                     TemplateBox.Text = sel.Name;   // 回填选中模板名
                     _loadingTemplates = false;
                     RefreshFilteredList();          // 恢复全量列表（含置顶顺序）
+                    UpdateTemplateBoxVisual();      // 切换后显示态：灰字
                     _current = sel;
                     RenderFields();
                     FocusFirstInput();

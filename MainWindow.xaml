@@ -112,6 +112,7 @@
                           PreviewMouseLeftButtonUp="TemplateBox_PreviewMouseLeftButtonUp"
                           MouseLeftButtonUp="TemplateBox_MouseLeftButtonUp"
                           DropDownOpened="TemplateBox_DropDownOpened"
+                          GotKeyboardFocus="TemplateBox_GotKeyboardFocus"
                           LostKeyboardFocus="TemplateBox_LostKeyboardFocus"
                           VerticalContentAlignment="Center" />
                 <!-- 模板操作：重命名 / 新增 / 保存 / 删除（图标按钮，ToolTip 提示语义，保存含 Ctrl+S 快捷键） -->
