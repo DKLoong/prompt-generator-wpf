@@ -1,6 +1,7 @@
 <Application x:Class="PromptGenerator.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:PromptGenerator"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
         <!-- 主题色（与既有版本一致） -->
@@ -15,6 +16,12 @@
         <SolidColorBrush x:Key="AccentHoverBrush" Color="#9d91f4" />
         <SolidColorBrush x:Key="DangerBrush" Color="#e5534b" />
         <SolidColorBrush x:Key="OkBrush" Color="#57ab5a" />
+
+        <!-- ToolTip 统一摆放：固定显示在按钮下方、与按钮水平居中、距按钮外边 2px（键盘聚焦与鼠标悬停一致，不跟随鼠标） -->
+        <Style TargetType="ToolTip">
+            <Setter Property="Placement" Value="Custom" />
+            <Setter Property="CustomPopupPlacementCallback" Value="{x:Static local:App.ToolTipPlacementCallback}" />
+        </Style>
 
         <!-- 标题栏按钮 -->
         <Style x:Key="TitleBtn" TargetType="Button">

@@ -1,11 +1,23 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
 
 namespace PromptGenerator;
 
 public partial class App : Application
 {
+    /// <summary>ToolTip 统一摆放回调：按钮下方、水平居中、距按钮外边 2px。</summary>
+    public static readonly CustomPopupPlacementCallback ToolTipPlacementCallback = ToolTipPlacement;
+
+    private static CustomPopupPlacement[] ToolTipPlacement(Size popupSize, Size targetSize, Point offset)
+        => new[]
+        {
+            new CustomPopupPlacement(
+                new Point((targetSize.Width - popupSize.Width) / 2, targetSize.Height + 2),
+                PopupPrimaryAxis.Horizontal)
+        };
+
     protected override void OnStartup(StartupEventArgs e)
     {
         // 显式声明 PerMonitorV2 DPI 感知（必须在任何窗口创建前）

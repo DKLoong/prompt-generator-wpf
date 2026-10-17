@@ -32,10 +32,15 @@ public partial class HistoryWindow : Window
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>Tab 聚焦到关闭按钮时立即弹出"关闭"提示；移出焦点时收起。</summary>
+    /// <summary>Tab 聚焦到关闭按钮时立即弹出"关闭"提示；移出焦点时收起。
+    /// 悬停路径由 ToolTipService 自动设置 PlacementTarget；键盘路径需显式指定，否则按鼠标位置摆放。</summary>
     private void CloseBtn_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
     {
-        if (CloseBtn.ToolTip is ToolTip tip) tip.IsOpen = true;
+        if (CloseBtn.ToolTip is ToolTip tip)
+        {
+            tip.PlacementTarget = CloseBtn;
+            tip.IsOpen = true;
+        }
     }
 
     private void CloseBtn_LostKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
