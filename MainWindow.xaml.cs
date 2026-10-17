@@ -40,6 +40,8 @@ public partial class MainWindow : Window
     private string? _lastSubmittedPrompt;
     /// <summary>键盘（Enter/Space）即将触发点击的按钮。Click 时据此区分键盘/鼠标触发：键盘触发保留焦点，鼠标触发清除焦点。</summary>
     private readonly HashSet<Button> _keyboardClickTargets = new();
+    /// <summary>键盘聚焦（Tab）时已由本类即时打开的提示所在按钮；LostKeyboardFocus 时据此关闭，避免误关悬停路径打开的提示。</summary>
+    private static readonly HashSet<Button> _keyboardTooltipButtons = new();
 
     public MainWindow()
     {
@@ -69,11 +71,49 @@ public partial class MainWindow : Window
                 if (sender is Button btn && _keyboardClickTargets.Remove(btn)) return;
                 Keyboard.ClearFocus();
             }));
+        // ToolTip 键盘聚焦策略：WPF 内建"键盘聚焦显示提示"同样走 InitialShowDelay（悬停延迟），
+        // 导致 Tab 聚焦时提示被延迟。已在样式层用 ShowsToolTipOnKeyboardFocus=False 关闭内建键盘提示，
+        // 改由 Got/LostKeyboardFocus 即时开/关（悬停路径仍走 800ms + BetweenShowDelay，行为不变）。
+        EventManager.RegisterClassHandler(typeof(Button), Button.GotKeyboardFocusEvent,
+            new KeyboardFocusChangedEventHandler(OnButtonGotKeyboardFocus));
+        EventManager.RegisterClassHandler(typeof(Button), Button.LostKeyboardFocusEvent,
+            new KeyboardFocusChangedEventHandler(OnButtonLostKeyboardFocus));
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照
         foreach (var t in _data.Templates) SaveSnapshot(t);
         Loaded += OnLoaded;
+    }
+
+    // ---------------- ToolTip 键盘聚焦（即时弹出） ----------------
+
+    private static void OnButtonGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        // 鼠标点击获得的焦点（IsMouseOver 为真）不弹提示；仅 Tab 等键盘导航即时弹出
+        if (sender is not Button b || b.IsMouseOver) return;
+        if (GetOrCreateToolTip(b) is not ToolTip tip) return;
+        tip.PlacementTarget = b;
+        tip.IsOpen = true;
+        _keyboardTooltipButtons.Add(b);
+    }
+
+    private static void OnButtonLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is not Button b || !_keyboardTooltipButtons.Remove(b)) return;
+        if (b.ToolTip is ToolTip tip) tip.IsOpen = false;
+    }
+
+    /// <summary>获取按钮的 ToolTip 实例；字符串 ToolTip 首次键盘聚焦时物化为 ToolTip（便于程序化即时显示，隐式样式在显示时生效）。</summary>
+    private static ToolTip? GetOrCreateToolTip(Button b)
+    {
+        if (b.ToolTip is ToolTip tip) return tip;
+        if (b.ToolTip is string text)
+        {
+            tip = new ToolTip { Content = text };
+            b.ToolTip = tip;
+            return tip;
+        }
+        return null;
     }
 
     /// <summary>数据目录（与模板存储一致）：程序目录 data\，失败回退 %LOCALAPPDATA%\PromptGenerator\data。</summary>

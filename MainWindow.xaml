@@ -34,7 +34,7 @@
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
                             ToolTipService.InitialShowDelay="800"
-                            ToolTipService.BetweenShowDelay="0"
+                            ToolTipService.ShowsToolTipOnKeyboardFocus="False"
                             Click="PinBtn_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">

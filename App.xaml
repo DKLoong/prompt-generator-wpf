@@ -34,7 +34,7 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-            <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -61,7 +61,6 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-            <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -240,7 +239,7 @@
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-            <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -273,7 +272,6 @@
             <Setter Property="IsTabStop" Value="False" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-            <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
