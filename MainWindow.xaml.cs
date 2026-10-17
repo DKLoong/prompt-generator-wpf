@@ -628,6 +628,7 @@ public partial class MainWindow : Window
             _loadingTemplates = false;
         }
         Logging.Debug($"SelChanged sel={(TemplateBox.SelectedItem as Template)?.Name} filter={_filterActive} loading={_loadingTemplates}");
+        bool removedAny = false;   // 离开清理是否删除了空白/临时模板（需重建视图避免列表残留）
         // 离开当前模板前：
         // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
         //   除当前模板外，也清理列表中残留的其他历史编辑模板——例如：编辑历史A后未切走
@@ -650,6 +651,7 @@ public partial class MainWindow : Window
                 }
                 try { _store.Save(_data); } catch { }
             }
+            bool removedBlank = false;
             // 当前模板若已被上述清理移除（历史编辑模板），跳过快照恢复等后续处理
             if (_current != null && _data.Templates.Contains(_current))
             {
@@ -660,11 +662,28 @@ public partial class MainWindow : Window
                     _data.Templates.Remove(_current);
                     // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
                     if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
+                    removedBlank = true;
                     try { _store.Save(_data); } catch { }
                 }
             }
+            removedAny = removedAny || tempToRemove.Count > 0 || removedBlank;
         }
         LoadCurrentTemplate();
+        if (removedAny)
+        {
+            // 离开清理删除了空白/临时模板：_templatesView 是静态快照不反映删除，重建视图避免列表残留已删模板，
+            // 保持当前选中项（切换目标），不重置到首项
+            _loadingTemplates = true;
+            var sel = TemplateBox.SelectedItem;
+            _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+            _templatesView.Filter = _filterActive
+                ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
+                : null;
+            TemplateBox.ItemsSource = _templatesView;
+            if (sel != null) TemplateBox.SelectedItem = sel;
+            _loadingTemplates = false;
+            Logging.Debug($"SelChanged rebuiltView removedAny={removedAny} sel={(sel as Template)?.Name}");
+        }
         if (pick) FocusFirstInput();   // 鼠标点击候选项=确认切换：退出编辑态，聚焦第一个内容框段首（显示态保持灰字）
     }
 
