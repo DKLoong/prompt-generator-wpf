@@ -6,7 +6,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="提示词生成器"
         Icon="Assets/app-icon.png"
-        Width="470" Height="700" MinWidth="365" MinHeight="430"
+        Width="365" Height="600" MinWidth="365" MinHeight="430"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResize" WindowStartupLocation="Manual" Topmost="True"
         ShowInTaskbar="True" Closing="Window_Closing">

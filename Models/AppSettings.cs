@@ -12,6 +12,6 @@ public class AppSettings
     /// <summary>窗口位置与尺寸记忆。</summary>
     public double WindowX { get; set; } = double.NaN;
     public double WindowY { get; set; } = double.NaN;
-    public double WindowWidth { get; set; } = 470;
-    public double WindowHeight { get; set; } = 700;
+    public double WindowWidth { get; set; } = 365;
+    public double WindowHeight { get; set; } = 600;
 }
