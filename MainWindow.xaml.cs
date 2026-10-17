@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -42,6 +43,9 @@ public partial class MainWindow : Window
     private bool _filterActive;
     /// <summary>双击改名态：框内文本作为新模板名编辑，Enter/失焦确认，Esc 取消。</summary>
     private bool _renaming;
+    /// <summary>模板下拉的集合视图：ItemsSource 常驻此视图，过滤只切换 Filter 谓词，
+    /// 避免重建 ItemsSource 破坏 IsEditable 下拉的输入与选中态（首字符被吞、方向键高亮丢失的根因）。</summary>
+    private ICollectionView? _templatesView;
     /// <summary>键盘（Enter/Space）即将触发点击的按钮。Click 时据此区分键盘/鼠标触发：键盘触发保留焦点，鼠标触发清除焦点。</summary>
     private readonly HashSet<Button> _keyboardClickTargets = new();
     /// <summary>键盘聚焦（Tab）时已由本类即时打开的提示所在按钮；LostKeyboardFocus 时据此关闭，避免误关悬停路径打开的提示。</summary>
@@ -530,7 +534,9 @@ public partial class MainWindow : Window
     {
         _loadingTemplates = true;
         _filterActive = false;
-        TemplateBox.ItemsSource = GetDisplayOrder().ToList();
+        _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+        _templatesView.Filter = null;
+        TemplateBox.ItemsSource = _templatesView;
         TemplateBox.DisplayMemberPath = nameof(PromptGenerator.Models.Template.Name);
         if (_data.Templates.Count > 0)
         {
@@ -554,12 +560,16 @@ public partial class MainWindow : Window
         return pinned.Concat(_data.Templates.Where(t => !pinnedIds.Contains(t.Id)));
     }
 
-    /// <summary>LastUsedAt 更新后重建显示顺序，保留当前选中项（不重置到首项）。</summary>
+    /// <summary>LastUsedAt 更新后重建显示顺序，保留当前选中项（不重置到首项），过滤谓词同步保留。</summary>
     private void RefreshOrderKeepSelection()
     {
         var sel = TemplateBox.SelectedItem as Template;
         _loadingTemplates = true;
-        TemplateBox.ItemsSource = GetDisplayOrder().ToList();
+        _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+        _templatesView.Filter = _filterActive
+            ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
+            : null;
+        TemplateBox.ItemsSource = _templatesView;
         if (sel != null)
         {
             TemplateBox.SelectedItem = sel;
@@ -571,6 +581,7 @@ public partial class MainWindow : Window
     private void TemplateBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loadingTemplates) return;
+        if (_renaming) return;   // 改名态：编辑文本引发的选中变化不切换模板、不恢复快照、不重渲染字段
         // 离开当前模板前：
         // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
         //   除当前模板外，也清理列表中残留的其他历史编辑模板——例如：编辑历史A后未切走
@@ -695,27 +706,14 @@ public partial class MainWindow : Window
         RefreshFilteredList();
     }
 
-    /// <summary>按当前过滤词重建下拉列表：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；过滤态不保留旧选中项。</summary>
+    /// <summary>按当前过滤词切换视图过滤：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；只改 Filter 谓词，不重建 ItemsSource。</summary>
     private void RefreshFilteredList()
     {
-        IEnumerable<Template> source = GetDisplayOrder();
-        if (_filterActive)
-        {
-            string kw = TemplateBox.Text.Trim();
-            source = source.Where(t => t.Name?.IndexOf(kw, StringComparison.OrdinalIgnoreCase) >= 0);
-        }
-        else
-        {
-            var sel = TemplateBox.SelectedItem as Template;
-            _loadingTemplates = true;
-            TemplateBox.ItemsSource = source.ToList();
-            if (sel != null) TemplateBox.SelectedItem = sel;
-            _loadingTemplates = false;
-            return;
-        }
-        _loadingTemplates = true;
-        TemplateBox.ItemsSource = source.ToList();
-        _loadingTemplates = false;
+        if (_templatesView == null) return;
+        _templatesView.Filter = _filterActive
+            ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
+            : null;
+        _templatesView.Refresh();
     }
 
     /// <summary>清空过滤：回填当前选中模板名并恢复全量列表（Esc 第一级）。</summary>
@@ -727,16 +725,24 @@ public partial class MainWindow : Window
         RefreshFilteredList();
     }
 
-    /// <summary>双击进入改名态：收起下拉、文本预填当前模板名并全选，直接键入即覆盖。</summary>
+    /// <summary>单击：全选现有文本，键入即覆盖（不改动展开行为）；双击：进入改名态——收起下拉、文本预填当前模板名并全选。</summary>
     private void TemplateBox_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount != 2 || _renaming || _current == null) return;
-        _renaming = true;
-        TemplateBox.IsDropDownOpen = false;
-        TemplateBox.Text = _current.Name ?? "";
-        if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
-            tb.SelectAll();
-        e.Handled = true;
+        if (e.ClickCount == 1)
+        {
+            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+                tb.SelectAll();
+            return;
+        }
+        if (e.ClickCount == 2 && !_renaming && _current != null)
+        {
+            _renaming = true;
+            TemplateBox.IsDropDownOpen = false;
+            TemplateBox.Text = _current.Name ?? "";
+            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
+                tb.SelectAll();
+            e.Handled = true;
+        }
     }
 
     /// <summary>失焦时若处于改名态则确认改名（焦点已移走，无需再安排落点）。</summary>
@@ -766,9 +772,17 @@ public partial class MainWindow : Window
         if (_current != null && _current.Name != newName)
         {
             _current.Name = newName;
+            SaveSnapshot(_current);   // 同步快照，防止切走模板时被旧快照恢复覆盖改名
             try { PersistData(); } catch { }
         }
         _renaming = false;
+        // 改名输入可能已使选中项与文本脱节：恢复选中指向当前模板，保证下拉展开显示正常
+        if (TemplateBox.SelectedItem != _current)
+        {
+            _loadingTemplates = true;
+            TemplateBox.SelectedItem = _current;
+            _loadingTemplates = false;
+        }
         return true;
     }
 
