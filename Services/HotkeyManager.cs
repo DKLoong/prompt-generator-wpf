@@ -43,9 +43,6 @@ public sealed class HotkeyManager : IDisposable
         _source.AddHook(WndProc);
     }
 
-    /// <summary>当前生效的热键文本（未注册为空串）。</summary>
-    public string CurrentHotkey { get; private set; } = "";
-
     /// <summary>尝试注册热键。成功返回 true；失败时 reason 说明原因（含系统冲突）。</summary>
     public bool TryRegister(string hotkeyText, out string reason)
     {
@@ -64,7 +61,6 @@ public sealed class HotkeyManager : IDisposable
             return false;
         }
         _registered = true;
-        CurrentHotkey = hotkeyText;
         reason = "";
         return true;
     }
@@ -75,7 +71,6 @@ public sealed class HotkeyManager : IDisposable
         {
             UnregisterHotKey(_hwnd, _id);
             _registered = false;
-            CurrentHotkey = "";
         }
     }
 
