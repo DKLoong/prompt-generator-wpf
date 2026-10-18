@@ -1247,7 +1247,12 @@ public partial class MainWindow : Window
         if (_current != null && _current.Name != newName)
         {
             _current.Name = newName;
-            SaveSnapshot(_current);   // 同步快照，防止切走模板时被旧快照恢复覆盖改名
+            // 重命名 Enter 只保存模板名称：仅更新快照的名称、保留快照原有字段（最近一次显式保存的内容），
+            // 使 PersistData 只把新名称落盘、不把未保存的内容编辑一并写盘（收窄"保存整个模板"为"仅保存名称"）。
+            if (_savedSnapshots.TryGetValue(_current.Id, out var snap))
+                snap.Name = newName;
+            else
+                SaveSnapshot(_current);
             try { PersistData(); } catch { }
         }
         _renaming = false;
