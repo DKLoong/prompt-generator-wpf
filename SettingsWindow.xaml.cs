@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using PromptGenerator.Services;
 
 namespace PromptGenerator;
@@ -25,7 +26,18 @@ public partial class SettingsWindow : Window
         HotkeyBox.Text = currentHotkey;
         DockCheck.IsChecked = dockEnabled;
         PinRecentCheck.IsChecked = pinRecentEnabled;
-        Loaded += (_, _) => HotkeyBox.Focus();
+        // 弹窗不自动聚焦任何控件：等 WPF 默认焦点分配完成后清除，焦点留在窗口（点击热键框才触发全选/按键替换）
+        Loaded += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(Keyboard.ClearFocus));
+        // 焦点不在热键框内时 Esc 关闭窗口；热键框内 Esc 由 PreviewKeyDown 处理（还原文本，不关窗）
+        KeyDown += SettingsWindow_KeyDown;
+    }
+
+    private void SettingsWindow_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && !HotkeyBox.IsKeyboardFocusWithin)
+        {
+            DialogResult = false;
+        }
     }
 
     private void HotkeyBox_GotFocus(object sender, RoutedEventArgs e)
