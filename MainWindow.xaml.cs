@@ -1914,8 +1914,11 @@ public partial class MainWindow : Window
         // SelectedIndex 变化驱动候选项 IsSelected 紫色高亮，随后用编辑态路径（SetCurrentValue）把框内文本
         // 恢复为过滤词（显示态=模板名）——导航只移高亮、不改用户输入；Enter 才确认切换。_loadingTemplates 短路
         // TextChanged/SelectionChanged，免疫不介入。
-        if (!_renaming && TemplateBox.IsDropDownOpen && (_filterActive || IsDisplayMode()) && (e.Key == Key.Down || e.Key == Key.Up))
+        // 条件不依赖 _filterActive/IsDisplayMode：下拉展开即代表用户意图方向键选候选——偶发回归是
+        // 文本被清空/输入过程（enterInput）导致状态判定失败，方向键退化为原生导航、焦点移走、Enter 失效。
+        if (!_renaming && TemplateBox.IsDropDownOpen && (e.Key == Key.Down || e.Key == Key.Up))
         {
+            Logging.Debug($"NavBlock open={TemplateBox.IsDropDownOpen} filt={_filterActive} disp={IsDisplayMode()} idx={TemplateBox.SelectedIndex} count={_templatesView?.Cast<object>().Count() ?? 0}");
             int count = _templatesView?.Cast<object>().Count() ?? 0;
             if (count == 0) { e.Handled = true; return; }
             int idx = TemplateBox.SelectedIndex;   // 过滤视图内索引（Items=过滤后的视图）
@@ -1953,6 +1956,7 @@ public partial class MainWindow : Window
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None
             && (TemplateBox.IsKeyboardFocusWithin || TemplateBox.IsDropDownOpen))
         {
+            Logging.Debug($"EnterBranch focus={TemplateBox.IsKeyboardFocusWithin} open={TemplateBox.IsDropDownOpen} renaming={_renaming} filt={_filterActive} disp={IsDisplayMode()} sel={(TemplateBox.SelectedItem as Template)?.Name}");
             if (_renaming)
             {
                 e.Handled = true;
@@ -1980,7 +1984,9 @@ public partial class MainWindow : Window
                     }
                 }
                 TemplateBox.IsDropDownOpen = false;
-                if ((_filterActive || IsDisplayMode()) && TemplateBox.SelectedItem is Template sel)
+                // 确认切换不再依赖显示/过滤态判定：下拉展开 + 有效选中即确认（偶发回归：
+                // 文本被清空/输入过程使 IsDisplayMode 为 false，Enter 只 FocusFirstInput 不切换）。
+                if (TemplateBox.SelectedItem is Template sel)
                 {
                     // 过滤态/显示态弹列表导航确认：切换模板（过滤态 SelectionChanged 已屏蔽自动切换）
                     _filterActive = false;
