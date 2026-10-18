@@ -327,7 +327,7 @@ public partial class MainWindow : Window
             _settings.WindowHeight = Height;
             _settingsStore.Save(_settings);
         }
-        catch { /* 保存失败不影响使用 */ }
+        catch (Exception ex) { Logging.Warn($"窗口状态保存失败：{ex.Message}"); }
     }
 
     /// <summary>窗口失焦（用户拖完/调完尺寸点到别处）时落盘一次。</summary>
@@ -664,7 +664,8 @@ public partial class MainWindow : Window
                     // 同步清理"未保存新模板"标记（历史编辑模板不会命中，统一处理更稳妥）
                     if (_pendingNewTemplate == t) _pendingNewTemplate = null;
                 }
-                try { _store.Save(_data); } catch { }
+                try { _store.Save(_data); }
+                catch (Exception ex) { Logging.Warn($"模板改名落盘失败：{ex.Message}"); }
             }
             bool removedBlank = false;
             // 当前模板若已被上述清理移除（历史编辑模板），跳过快照恢复等后续处理
@@ -678,7 +679,8 @@ public partial class MainWindow : Window
                     // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
                     if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
                     removedBlank = true;
-                    try { _store.Save(_data); } catch { }
+                    try { _store.Save(_data); }
+                    catch (Exception ex) { Logging.Warn($"删除空白模板落盘失败：{ex.Message}"); }
                 }
             }
             removedAny = removedAny || tempToRemove.Count > 0 || removedBlank;
@@ -1224,7 +1226,8 @@ public partial class MainWindow : Window
                 snap.Name = newName;
             else
                 SaveSnapshot(_current);
-            try { PersistData(); } catch { }
+            try { PersistData(); }
+            catch (Exception ex) { Logging.Warn($"模板改名落盘失败：{ex.Message}"); }
         }
         _renaming = false;
         // 改名输入可能已使选中项与文本脱节：恢复选中指向当前模板，保证下拉展开显示正常
@@ -1305,7 +1308,8 @@ public partial class MainWindow : Window
         _savedSnapshots.Remove(current.Id);
         if (_pendingNewTemplate == current) _pendingNewTemplate = null;   // 未保存的新模板被删除
         _current = null;
-        try { _store.Save(_data); } catch { }
+        try { _store.Save(_data); }
+        catch (Exception ex) { Logging.Warn($"删除模板落盘失败：{ex.Message}"); }
         RefreshTemplateBox();
         TemplateBox.Focus();
         Logging.Info($"删除模板：{current.Name}");
@@ -1340,7 +1344,8 @@ public partial class MainWindow : Window
 
         SaveSnapshot(_current);         // 重置结果视为已保存状态，防止切走时被旧快照回滚
         _pendingNewTemplate = null;     // 未保存的新模板被重置为默认内容后，允许再次新增
-        try { _store.Save(_data); } catch { }   // 落盘：预置模板出厂内容覆盖用户此前保存的修改
+        try { _store.Save(_data); }
+        catch (Exception ex) { Logging.Warn($"重置模板落盘失败：{ex.Message}"); }   // 落盘：预置模板出厂内容覆盖用户此前保存的修改
 
         _loadingTemplates = true;
         TemplateBox.Text = _current.Name;
@@ -2034,7 +2039,8 @@ public partial class MainWindow : Window
         {
             _data.History.Insert(0, entry);
             if (_data.History.Count > 50) _data.History.RemoveRange(50, _data.History.Count - 50);
-            try { PersistData(); } catch { }
+            try { PersistData(); }
+            catch (Exception ex) { Logging.Warn($"历史记录保存失败：{ex.Message}"); }
         }
 
         if (mode == ActionMode.Copy)
@@ -2076,7 +2082,8 @@ public partial class MainWindow : Window
     {
         if (_current == null) return;
         _current.LastUsedAt = DateTime.Now;
-        try { PersistData(); } catch { }
+        try { PersistData(); }
+        catch (Exception ex) { Logging.Warn($"模板使用时间保存失败：{ex.Message}"); }
         RefreshOrderKeepSelection();
     }
 
@@ -2115,7 +2122,8 @@ public partial class MainWindow : Window
                 var exited = await Task.WhenAny(proc.WaitForExitAsync(), Task.Delay(120_000));
                 if (exited is not Task<bool>)
                 {
-                    try { proc.Kill(); } catch { }
+                    try { proc.Kill(); }
+                    catch (Exception ex) { Logging.Warn($"终止超时 claude 进程失败：{ex.Message}"); }
                     return (false, "claude 执行超时（120 秒）");
                 }
                 var stdout = await outTask;
@@ -2199,7 +2207,8 @@ public partial class MainWindow : Window
             },
             onDelete: entry =>
             {
-                try { PersistData(); } catch { }
+                try { PersistData(); }
+                catch (Exception ex) { Logging.Warn($"历史删除保存失败：{ex.Message}"); }
             })
         {
             Owner = this

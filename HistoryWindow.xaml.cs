@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using PromptGenerator.Models;
+using PromptGenerator.Services;
 
 namespace PromptGenerator;
 
@@ -69,7 +70,8 @@ public partial class HistoryWindow : Window
         if (sender is not Button btn || btn.Tag is not string id) return;
         var entry = _history.FirstOrDefault(h => h.Id == id);
         if (entry == null) return;
-        try { Clipboard.SetText(entry.Prompt); } catch { }
+        try { Clipboard.SetText(entry.Prompt); }
+        catch (Exception ex) { Logging.Warn($"历史条目复制失败：{ex.Message}"); }
     }
 
     private void EditBtn_Click(object sender, RoutedEventArgs e)

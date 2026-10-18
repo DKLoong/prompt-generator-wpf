@@ -49,7 +49,7 @@ public partial class App : Application
             var settings = new SettingsStore(AppPaths.DataDir).Load();
             settingsLevel = settings.LogLevel;
         }
-        catch { /* 设置读取失败时用默认 Info */ }
+        catch (Exception ex) { Logging.Warn($"设置读取失败，使用默认 Info：{ex.Message}"); }
         Logging.Init(e.Args, (LogLevel)Math.Clamp(settingsLevel, 0, 3));
         Logging.Info($"进程启动：版本={Environment.Version} 参数={string.Join(" ", e.Args ?? Array.Empty<string>())}");
 
