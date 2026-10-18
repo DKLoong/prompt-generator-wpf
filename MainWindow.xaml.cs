@@ -24,7 +24,6 @@ public partial class MainWindow : Window
     private Template? _current;
     private bool _loadingTemplates;
     private bool _suppressReclaim;
-    private readonly HashSet<(int, int)> _fresh = new();
     private bool _allowClose; // 托盘"退出"触发时置 true，允许真正关闭
     private readonly SettingsStore _settingsStore;
     private AppSettings _settings;
@@ -1084,6 +1083,42 @@ public partial class MainWindow : Window
     private void MainWindow_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _mousePick = IsHitOnComboBoxItem(e.OriginalSource as DependencyObject);
+        // 点击非输入区（空白/标题栏/字段区空隙）时交还窗口焦点，让聚焦中的空内容框失焦删除：
+        // WPF 点击无焦点目标的空白处默认不移焦，空框会一直保留；输入框/按钮自身正常拿焦点，不走此分支。
+        if (_suppressReclaim) return;
+        var src = e.OriginalSource as DependencyObject;
+        if (IsWithinInput(src) || IsWithinButton(src)) return;
+        if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase fe)
+        {
+            Logging.Debug($"ClickBlank clearfocus focused={fe.GetType().Name}");
+            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, new Action(() =>
+            {
+                FocusManager.SetFocusedElement(this, null);
+                Focus();
+            }));
+        }
+    }
+
+    /// <summary>点击点是否落在输入框（文本框/组合框）内：沿视觉树向上找 TextBoxBase / ComboBox。</summary>
+    private static bool IsWithinInput(DependencyObject? d)
+    {
+        while (d != null)
+        {
+            if (d is System.Windows.Controls.Primitives.TextBoxBase || d is System.Windows.Controls.ComboBox) return true;
+            d = System.Windows.Media.VisualTreeHelper.GetParent(d);
+        }
+        return false;
+    }
+
+    /// <summary>点击点是否落在按钮内：沿视觉树向上找 ButtonBase（按钮点击自聚焦，不走清焦点分支）。</summary>
+    private static bool IsWithinButton(DependencyObject? d)
+    {
+        while (d != null)
+        {
+            if (d is System.Windows.Controls.Primitives.ButtonBase) return true;
+            d = System.Windows.Media.VisualTreeHelper.GetParent(d);
+        }
+        return false;
     }
 
     /// <summary>重命名按钮：进入改名态——收起下拉、文本预填当前模板名并全选、聚焦编辑框，键入即覆盖。
@@ -1593,7 +1628,7 @@ public partial class MainWindow : Window
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
             {
                 // 空框内按 Enter 不做任何操作：避免连续产生多个空框，
-                // 也避免 LostKeyboardFocus 回收后 _fresh 索引错位。
+                // 也避免失焦删除空框后新框索引错位。
                 if (string.IsNullOrWhiteSpace(ta.Text))
                 {
                     e.Handled = true;
@@ -1604,42 +1639,23 @@ public partial class MainWindow : Window
             }
         };
         ta.TextChanged += (_, _) => field.Items[getIndex()] = ta.Text;
-        ta.LostKeyboardFocus += (_, _) =>
+        ta.LostKeyboardFocus += (_, e) =>
         {
             if (_suppressReclaim) return;
             int idx = getIndex();
             int ri = getRowIndex();
-            // 仅回收"刚插入且未输入"的空子项，避免打断正常编辑
-            if (_fresh.Contains((ri, idx))
-                && string.IsNullOrWhiteSpace(ta.Text)
+            Logging.Debug($"ItemLostFocus ri={ri} idx={idx} empty={string.IsNullOrWhiteSpace(ta.Text)} count={field.Items.Count} newFocus={e.NewFocus?.GetType().Name ?? "null"}");
+            // 字段内非唯一的空内容框（新增插入或手动清空产生）统一在失焦后删除、编号自动重排；
+            // 该字段仅剩这一个内容框时保留（watermark 态），与 × 的"仅一条清空"语义一致。
+            if (string.IsNullOrWhiteSpace(ta.Text)
                 && field.Items.Count > 1)
             {
-                _fresh.Remove((ri, idx));
+                Logging.Debug($"ItemEmptyRemoved ri={ri} idx={idx}");
                 field.Items.RemoveAt(idx);
                 RemoveItemUi(ri, idx);
             }
         };
-        // 聚焦到有内容的框时，回收当前字段所有残留的"刚插入未输入"空框；
-        // 直接移除对应 UI 行，不重建，焦点保持在用户点击的框上。
-        ta.GotKeyboardFocus += (_, _) =>
-        {
-            if (_suppressReclaim) return;
-            if (string.IsNullOrWhiteSpace(ta.Text)) return;
-            if (_fresh.Count == 0) return;
-            if (ta.Parent is not Grid itemGrid || itemGrid.Parent is not StackPanel right) return;
-            int ri = getRowIndex();
-            var stale = _fresh.Where(k => k.Item1 == ri
-                && k.Item2 < field.Items.Count
-                && string.IsNullOrWhiteSpace(field.Items[k.Item2])).ToList();
-            if (stale.Count == 0) return;
-            foreach (var k in stale.OrderByDescending(k => k.Item2))
-            {
-                _fresh.Remove(k);
-                field.Items.RemoveAt(k.Item2);
-                if (k.Item2 < right.Children.Count) right.Children.RemoveAt(k.Item2);
-            }
-            RenumberItems(right);
-        };
+        // 空框失焦即删，聚焦有内容框时的 _fresh 残留回收机制随之退役（点击转移焦点本身就会触发空框失焦删除）
 
         // 内容框 ×：该行最右端、垂直居中；hover 该框显示（与 + 成对）
         var delItem = new Button
@@ -1705,14 +1721,6 @@ public partial class MainWindow : Window
         if (_current == null) return;
         var f = _current.Fields[rowIndex];
         f.Items.Insert(itemIndex, "");
-        // 调整 _fresh：原 >= itemIndex 的记录索引 +1（因为后续行整体后移）
-        var freshList = _fresh.ToList();
-        _fresh.Clear();
-        foreach (var k in freshList)
-        {
-            _fresh.Add(k.Item1 == rowIndex && k.Item2 >= itemIndex ? (k.Item1, k.Item2 + 1) : k);
-        }
-        _fresh.Add((rowIndex, itemIndex));
 
         var rowGrid = FieldHost.Children.OfType<Grid>().ElementAt(rowIndex);
         var right = rowGrid.Children.OfType<StackPanel>().FirstOrDefault();
