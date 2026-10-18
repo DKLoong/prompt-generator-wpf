@@ -133,8 +133,25 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        HotkeyBox.Text = ModifiersText(Keyboard.Modifiers) + name;
-        ErrorTip.Visibility = Visibility.Collapsed;
+        string text = ModifiersText(Keyboard.Modifiers) + name;
+        HotkeyBox.Text = text;
+        if (IsSameAsCurrent(text))
+        {
+            Logging.Debug("新热键与原热键相同，提示");
+            ShowError("新热键与原热键相同");
+        }
+        else
+        {
+            ErrorTip.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    /// <summary>规范化比较：解析出的修饰键与虚拟键均相同则视为同一热键（忽略文本大小写等差异）。</summary>
+    private bool IsSameAsCurrent(string text)
+    {
+        return HotkeyManager.TryParse(text, out var m1, out var v1)
+            && HotkeyManager.TryParse(HotkeyText, out var m2, out var v2)
+            && m1 == m2 && v1 == v2;
     }
 
     private static string ModifiersText(ModifierKeys m)

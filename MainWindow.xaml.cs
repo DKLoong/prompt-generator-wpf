@@ -2108,23 +2108,42 @@ public partial class MainWindow : Window
         win.Show();
     }
 
-    /// <summary>打开设置弹窗，保存后应用：热键重注册 + 贴边开关持久化。</summary>
+    /// <summary>打开设置弹窗，保存后应用：热键重注册 + 贴边开关持久化。
+    /// 设置期间禁用全局热键，避免用户在热键框按下当前热键时触发主界面显隐；
+    /// 窗口关闭后统一恢复注册（保存→新热键，取消→原热键），新热键注册失败时回退注册原热键，保证热键不丢失。</summary>
     private void OpenSettings()
     {
-        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates) { Owner = this };
-        if (dlg.ShowDialog() != true) return;
+        _hotkey?.Unregister();
+        Logging.Debug("设置期间禁用全局热键");
 
-        bool hotkeyChanged = !string.Equals(dlg.HotkeyText, _settings.Hotkey, StringComparison.OrdinalIgnoreCase);
-        if (hotkeyChanged && _hotkey != null)
+        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates) { Owner = this };
+        bool saved = dlg.ShowDialog() == true;
+
+        if (_hotkey != null)
         {
-            if (!_hotkey.TryRegister(dlg.HotkeyText, out var reason))
+            string target = saved ? dlg.HotkeyText : _settings.Hotkey;
+            if (_hotkey.TryRegister(target, out var reason))
+            {
+                Logging.Debug($"热键注册成功：{target}");
+                if (saved && !string.Equals(dlg.HotkeyText, _settings.Hotkey, StringComparison.OrdinalIgnoreCase))
+                {
+                    _settings.Hotkey = dlg.HotkeyText;
+                }
+            }
+            else
             {
                 TrayIcon.ShowBalloonTip("热键注册失败", reason, Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Warning);
                 ShowToast(reason, false);
-                return; // 注册失败则不写入设置，保持旧热键
+                // 新热键注册失败：回退注册原热键，避免全局热键丢失（TryRegister 内部会先注销旧注册）
+                if (!string.Equals(target, _settings.Hotkey, StringComparison.OrdinalIgnoreCase)
+                    && !_hotkey.TryRegister(_settings.Hotkey, out var fallbackReason))
+                {
+                    Logging.Warn($"回退注册原热键失败：{fallbackReason}");
+                }
             }
-            _settings.Hotkey = dlg.HotkeyText;
         }
+
+        if (!saved) return;
 
         _settings.EdgeDockEnabled = dlg.DockEnabled;
         _settings.PinRecentTemplates = dlg.PinRecentEnabled;
