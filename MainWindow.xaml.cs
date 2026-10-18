@@ -74,7 +74,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _data = _store.Load();
-        _settingsStore = new SettingsStore(GetDataDir());
+        _settingsStore = new SettingsStore(AppPaths.DataDir);
         _settings = _settingsStore.Load();
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
@@ -176,25 +176,6 @@ public partial class MainWindow : Window
             return tip;
         }
         return null;
-    }
-
-    /// <summary>数据目录（与模板存储一致）：程序目录 data\，失败回退 %LOCALAPPDATA%\PromptGenerator\data。</summary>
-    private static string GetDataDir()
-    {
-        try
-        {
-            var dir = Path.Combine(AppContext.BaseDirectory, "data");
-            Directory.CreateDirectory(dir);
-            return dir;
-        }
-        catch
-        {
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "PromptGenerator", "data");
-            Directory.CreateDirectory(dir);
-            return dir;
-        }
     }
 
     // ---------------- 托盘 ----------------

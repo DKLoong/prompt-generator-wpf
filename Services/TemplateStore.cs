@@ -4,7 +4,7 @@ using PromptGenerator.Models;
 
 namespace PromptGenerator.Services;
 
-/// <summary>模板 JSON 读写（程序目录，失败回退 %LOCALAPPDATA%）。</summary>
+/// <summary>模板 JSON 读写（统一数据目录 %LOCALAPPDATA%\PromptGenerator\data）。</summary>
 public class TemplateStore
 {
     private readonly string _dir;
@@ -13,30 +13,7 @@ public class TemplateStore
 
     public TemplateStore()
     {
-        string baseDir;
-        try
-        {
-            baseDir = AppContext.BaseDirectory;
-        }
-        catch
-        {
-            baseDir = Environment.CurrentDirectory;
-        }
-
-        var dataDir = Path.Combine(baseDir, "data");
-        try
-        {
-            Directory.CreateDirectory(dataDir);
-            _dir = dataDir;
-        }
-        catch
-        {
-            var fallback = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "PromptGenerator", "data");
-            Directory.CreateDirectory(fallback);
-            _dir = fallback;
-        }
+        _dir = AppPaths.DataDir;
         _file = Path.Combine(_dir, "templates.json");
     }
 

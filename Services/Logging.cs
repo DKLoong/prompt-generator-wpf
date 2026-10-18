@@ -130,16 +130,12 @@ public static class Logging
     {
         try
         {
-            _dir = Path.Combine(AppContext.BaseDirectory, "data", LogsDirName);
+            _dir = Path.Combine(AppPaths.DataDir, LogsDirName);
             Directory.CreateDirectory(_dir);
         }
         catch
         {
-            _dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "PromptGenerator", "data", LogsDirName);
-            try { Directory.CreateDirectory(_dir); }
-            catch { _dir = ""; }
+            _dir = "";
         }
         _today = DateTime.Now.ToString("yyyyMMdd");
     }

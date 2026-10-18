@@ -31,7 +31,7 @@ public partial class App : Application
         int settingsLevel = 2; // Info
         try
         {
-            var settings = new SettingsStore(GetDataDir()).Load();
+            var settings = new SettingsStore(AppPaths.DataDir).Load();
             settingsLevel = settings.LogLevel;
         }
         catch { /* 设置读取失败时用默认 Info */ }
@@ -60,25 +60,6 @@ public partial class App : Application
         MessageBox.Show($"发生未处理异常：\n{e.Exception}", "提示词生成器",
             MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;
-    }
-
-    /// <summary>数据目录（与模板/设置一致）：程序目录 data\，失败回退 %LOCALAPPDATA%\PromptGenerator\data。</summary>
-    private static string GetDataDir()
-    {
-        try
-        {
-            var dir = System.IO.Path.Combine(AppContext.BaseDirectory, "data");
-            System.IO.Directory.CreateDirectory(dir);
-            return dir;
-        }
-        catch
-        {
-            var dir = System.IO.Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "PromptGenerator", "data");
-            System.IO.Directory.CreateDirectory(dir);
-            return dir;
-        }
     }
 
     [DllImport("user32.dll")]
