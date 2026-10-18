@@ -162,9 +162,10 @@ public partial class MainWindow : Window
     private static void OnButtonLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (sender is not Button b) return;
-        if (_keyboardTooltipButtons.Remove(b) && b.ToolTip is ToolTip tip)
-            tip.IsOpen = false;
-        // 恢复默认视觉（置顶态/置顶描边由触发器接管；hover 由触发器接管）
+        // 仅恢复"键盘聚焦时设置过视觉"的按钮：防止误清 SplitButton 等用本地值定制的按钮
+        // （其 Foreground=White 若被 ClearValue 会回退成 Button 默认黑色）
+        if (!_keyboardTooltipButtons.Remove(b)) return;
+        if (b.ToolTip is ToolTip tip) tip.IsOpen = false;
         b.ClearValue(Button.BackgroundProperty);
         b.ClearValue(Button.ForegroundProperty);
     }
