@@ -1826,7 +1826,10 @@ public partial class MainWindow : Window
             if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
             return;
         }
-        if (IsDisplayMode() && e.Key == Key.Down && !TemplateBox.IsDropDownOpen)
+        // 显示态：↓ 首次弹列表，列表已开则交导航块。仅当键盘焦点在模板框内时触发——
+        // 焦点在其他按钮（置顶/历史/设置/最小化/关闭/重命名/新建/保存/删除）按↓ 应走 WPF
+        // 方向键导航在按钮间切换，而非误弹模板列表（列表在错误焦点下打开后 Esc 也无法收起）。
+        if (IsDisplayMode() && e.Key == Key.Down && TemplateBox.IsKeyboardFocusWithin && !TemplateBox.IsDropDownOpen)
         {
             e.Handled = true;
             TemplateBox.IsDropDownOpen = true;
