@@ -1900,6 +1900,17 @@ public partial class MainWindow : Window
             TemplateBox.IsDropDownOpen = true;
             return;
         }
+        // 输入态（点击文本区定位光标/键入清空后，非显示态）：裸 ↓/↑ 不做任何操作——
+        // 可编辑 ComboBox 原生行为会在下拉关闭时选中首项并回填模板名（全选、触发 SelChanged 切换当前模板），
+        // 二次按下再展开下拉（日志实证 SelChanged/DropDownOpened），与"点击定位后编辑"语义冲突。
+        // 下拉展开后的方向键导航仍走下方 NavBlock；显示态弹列表由上一分支覆盖；Alt+Down/F4 等显式开列表键不受影响。
+        if (!_renaming && (e.Key == Key.Down || e.Key == Key.Up)
+            && Keyboard.Modifiers == ModifierKeys.None
+            && TemplateBox.IsKeyboardFocusWithin && !TemplateBox.IsDropDownOpen && !IsDisplayMode())
+        {
+            e.Handled = true;
+            return;
+        }
         // Ctrl+Enter：生成并复制
         if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.Control)
         {
