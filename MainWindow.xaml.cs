@@ -1095,6 +1095,10 @@ public partial class MainWindow : Window
         if (_suppressReclaim) return;
         var src = e.OriginalSource as DependencyObject;
         if (IsWithinInput(src) || IsWithinButton(src)) return;
+        // 点击下拉候选项（_mousePick）=确认选择切换模板，不是空白点击：
+        // 若误走清焦点分支，模板框失焦会触发下拉自动关闭，候选项 MouseUp 不再命中，选择被中断，
+        // 随后失焦恢复显示原模板名（日志实证：ClickBlank → LostFocus newFocus=MainWindow → Refresh 恢复 Bug修复，无 SelChanged）。
+        if (_mousePick) return;
         if (Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase fe)
         {
             Logging.Debug($"ClickBlank clearfocus focused={fe.GetType().Name}");
