@@ -106,11 +106,12 @@
                                 Margin="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Padding}" />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                            </Trigger>
+                            <!-- 聚焦高亮（紫色）放在最后，优先于悬停色：点击/聚焦输入框时始终显示紫色高亮 -->
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource MutedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

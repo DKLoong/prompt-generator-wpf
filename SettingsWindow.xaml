@@ -3,7 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="设置" Width="360" Height="320"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+        ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        PreviewKeyDown="SettingsWindow_PreviewKeyDown"
+        MouseLeftButtonDown="SettingsWindow_MouseLeftButtonDown">
     <Border Background="{StaticResource PanelBrush}" CornerRadius="10"
             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
         <Grid Margin="16">
@@ -28,6 +30,7 @@
                          Style="{StaticResource FieldInput}" FontSize="13"
                          Padding="8,0" VerticalContentAlignment="Center"
                          PreviewKeyDown="HotkeyBox_PreviewKeyDown"
+                         PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                          GotFocus="HotkeyBox_GotFocus"/>
                 <TextBlock x:Name="CaptureHint" Margin="0,6,0,0" FontSize="11"
                            Foreground="{StaticResource MutedBrush}"
