@@ -1128,9 +1128,23 @@ public partial class MainWindow : Window
         Logging.Debug($"RenameReady sel={(TemplateBox.SelectedItem as Template)?.Name}");
         if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
         {
+            // 编辑框失焦（点击外部控件/空白）即确认改名：LostKeyboardFocus 是直接路由事件，不冒泡到 TemplateBox，
+            // 模板框自身的 LostKeyboardFocus 处理器收不到内部编辑框的焦点变化——不移焦确认会导致改名态残留、模板名保持白字
+            tb.LostKeyboardFocus -= OnRenameEditBoxLostFocus;
+            tb.LostKeyboardFocus += OnRenameEditBoxLostFocus;
             tb.Focus();
             tb.SelectAll();
         }
+    }
+
+    /// <summary>改名态编辑框失焦：确认改名并退出改名态（一次性 handler，失焦后自动卸载）。
+    /// Enter 确认/ESC 取消后编辑框失焦也会触发本方法，此时 _renaming 已退出，仅卸载无副作用。</summary>
+    private void OnRenameEditBoxLostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        var tb = (TextBox)sender;
+        tb.LostKeyboardFocus -= OnRenameEditBoxLostFocus;
+        Logging.Debug($"RenameEditLostFocus confirm renaming={_renaming} newFocus={e.NewFocus?.GetType().Name}");
+        if (_renaming) TryConfirmRename();
     }
 
     /// <summary>模板框获得键盘焦点：鼠标点击聚焦（且当前为显示态）时，延迟到 ComboBox 聚焦全选/校正完成后清空进入输入态——
@@ -1208,6 +1222,7 @@ public partial class MainWindow : Window
         {
             TemplateBox.Text = _current?.Name ?? "";   // 空名：还原退出（视同取消）
             _renaming = false;
+            UpdateTemplateBoxVisual();   // 退出改名态：恢复显示态灰字（与正常/取消路径一致，防空名退出后白字残留）
             return true;
         }
         var dup = _data.Templates.FirstOrDefault(t =>
