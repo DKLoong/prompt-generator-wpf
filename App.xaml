@@ -45,11 +45,8 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{StaticResource Panel2Brush}" />
                             </Trigger>
-                            <!-- 键盘聚焦（Tab）：淡紫底 + 图标白色，视觉确认焦点位置且图标清晰可辨 -->
-                            <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
-                                <Setter Property="Foreground" Value="White" />
-                            </Trigger>
+                            <!-- 键盘聚焦视觉由代码控制（OnButtonGotKeyboardFocus）：仅键盘导航聚焦时亮淡紫底+白图标；
+                                 鼠标点击聚焦不亮（避免点击后高亮残留） -->
                             <!-- 按下反馈：背景紫色 + 图标白色，与设置窗口关闭按钮一致，确认点击已触发 -->
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
