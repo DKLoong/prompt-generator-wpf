@@ -558,6 +558,10 @@ public partial class MainWindow : Window
     {
         // 置顶态由模板的 Tag="pinned" 触发器渲染（紫色描边），未置顶时 Tag=null
         PinBtn.Tag = _pinned ? "pinned" : null;
+        // 键盘切换置顶后焦点仍在本按钮：强制白色图标（本地值优先级最高），
+        // 保持"键盘聚焦=白图标"的视觉（覆盖置顶触发器紫）；失焦后 ClearValue 回落置顶紫/非置顶浅灰。
+        if (PinBtn.IsKeyboardFocused)
+            PinBtn.Foreground = Brushes.White;
     }
 
     private static Style? FindIconBtnSoftStyle() =>
