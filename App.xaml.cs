@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
@@ -11,6 +12,15 @@ namespace PromptGenerator;
 
 public partial class App : Application
 {
+    private const string SingleInstanceMutexName = @"Local\PromptGenerator.SingleInstance";
+    private const string ShowWindowEventName = @"Local\PromptGenerator.ShowWindow";
+
+    /// <summary>单实例互斥体：同一会话内只允许一个实例（Local 前缀，避免跨会话/权限问题）。</summary>
+    private static Mutex? _singleInstanceMutex;
+
+    /// <summary>第二实例唤起信号：收到后把窗口恢复到桌面。</summary>
+    private EventWaitHandle? _showSignal;
+
     public App()
     {
         InitializeComponent();
@@ -42,6 +52,23 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // 单实例：同会话内只允许一个实例；第二实例通知已运行实例显示窗口后退出（无提示框打扰）
+        _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool isNewInstance);
+        if (!isNewInstance)
+        {
+            try
+            {
+                using var signal = EventWaitHandle.OpenExisting(ShowWindowEventName);
+                signal.Set();
+            }
+            catch { /* 已运行实例尚未就绪时静默退出 */ }
+            _singleInstanceMutex.Dispose();
+            Shutdown();
+            return;
+        }
+        _showSignal = new EventWaitHandle(false, EventResetMode.AutoReset, ShowWindowEventName);
+        StartShowSignalListener();
+
         // 初始化统一日志：从设置读取 LogLevel，命令行 --debug 可临时提升到 Debug
         int settingsLevel = 2; // Info
         try
@@ -65,7 +92,35 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Logging.Info($"进程退出，退出码={e.ApplicationExitCode}");
+        try { _singleInstanceMutex?.ReleaseMutex(); } catch { /* 所有权已由进程退出回收 */ }
+        _singleInstanceMutex?.Dispose();
+        _showSignal?.Dispose();
         base.OnExit(e);
+    }
+
+    /// <summary>后台线程监听"第二实例唤起"信号，收到后经 Dispatcher 把窗口恢复到桌面。</summary>
+    private void StartShowSignalListener()
+    {
+        var t = new Thread(() =>
+        {
+            try
+            {
+                while (_showSignal!.WaitOne())
+                    Dispatcher.Invoke(ShowMainWindowFromSecondInstance);
+            }
+            catch { /* 监听线程退出不影响主进程 */ }
+        })
+        { IsBackground = true, Name = "SingleInstance-ShowListener" };
+        t.Start();
+    }
+
+    private void ShowMainWindowFromSecondInstance()
+    {
+        if (MainWindow == null) return;
+        if (MainWindow.WindowState == WindowState.Minimized)
+            MainWindow.WindowState = WindowState.Normal;
+        MainWindow.Show();
+        MainWindow.Activate();
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
