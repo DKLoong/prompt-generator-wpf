@@ -4,7 +4,7 @@ using PromptGenerator.Models;
 
 namespace PromptGenerator.Services;
 
-/// <summary>模板 JSON 读写（统一数据目录 %LOCALAPPDATA%\PromptGenerator\data）。</summary>
+/// <summary>模板 JSON 读写（数据目录统一走 AppPaths：便携优先 exe 旁 data\，不可写回退 %LOCALAPPDATA%）。</summary>
 public class TemplateStore
 {
     private readonly string _dir;

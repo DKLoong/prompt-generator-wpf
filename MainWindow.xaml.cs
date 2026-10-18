@@ -79,10 +79,10 @@ public partial class MainWindow : Window
         ActionButton.Executed += OnActionExecuted;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
         // 按钮点击后的焦点策略（统一覆盖新增/删除/保存等顶部/操作按钮）：
-        // 鼠标与键盘（Enter/Space）触发的点击统一清除键盘焦点并清空焦点作用域，
-        // 避免按钮保持焦点造成高亮残留（弹窗关闭/窗口还原时焦点归还按钮）。
+        // 键盘（Enter/Space）触发的点击保留焦点——键盘导航连续、可再次 Enter 触发同一按钮；
+        // 鼠标触发的点击清除键盘焦点并清空焦点作用域，避免按钮保持焦点造成高亮残留（弹窗关闭/窗口还原时焦点归还按钮）。
         // 键盘导航连续操作依赖 Tab 重新导航（每次点击后焦点回窗口）。
-        // _keyboardClickTargets 保留加入/移除逻辑（无消费方，仅作历史标记，无副作用）。
+        // 区分依据：PreviewKeyDown(Enter/Space) 加入 _keyboardClickTargets，鼠标按下时移除，Click 时据此判断触发来源。
         EventManager.RegisterClassHandler(typeof(Button), Button.PreviewKeyDownEvent,
             new KeyEventHandler((sender, e) =>
             {
@@ -112,9 +112,7 @@ public partial class MainWindow : Window
             new KeyboardFocusChangedEventHandler(OnButtonGotKeyboardFocus));
         EventManager.RegisterClassHandler(typeof(Button), Button.LostKeyboardFocusEvent,
             new KeyboardFocusChangedEventHandler(OnButtonLostKeyboardFocus));
-        // 键盘聚焦 ToolTip 不依赖导航标记：其置位/消费在 Tab 导航各场景存在漏洞
-        // （日志实证"鼠标失焦后 Tab 聚焦置顶"时标记为 false，导致 tooltip 不显示），
-        // 故聚焦处理一律走 OnButtonGotKeyboardFocus 的 IsMouseOver 判断。
+        // 键盘聚焦 ToolTip 一律走 OnButtonGotKeyboardFocus 的 IsMouseOver 判断（区分键盘聚焦/鼠标悬停路径）。
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照
@@ -131,8 +129,6 @@ public partial class MainWindow : Window
         // 仅当鼠标不在按钮上（IsMouseOver=false）即时弹提示并设聚焦视觉。
         // 鼠标在按钮上（IsMouseOver=true）跳过：那是鼠标点击/悬停路径，系统 hover 提示已覆盖，
         // 且鼠标点击不应触发聚焦视觉（避免点击切换置顶时闪紫填充）。
-        // 不依赖 _keyboardNavPending：其置位/消费在 Tab 导航各场景存在漏洞
-        // （日志实证"鼠标失焦后 Tab 聚焦置顶"时标记为 false，导致 tooltip 不显示）。
         if (sender is not Button b || b.IsMouseOver) return;
         if (GetOrCreateToolTip(b) is not ToolTip tip) return;
         Logging.Debug($"键盘聚焦ToolTip: btn={b.Name ?? b.Content?.ToString() ?? "?"} 已就绪");
@@ -728,7 +724,7 @@ public partial class MainWindow : Window
 
     private void SaveSnapshot(Template t) => _savedSnapshots[t.Id] = DeepCopy(t);
 
- /// <summary>
+    /// <summary>
     /// 非"保存到模板"场景（生成、历史删除）落盘：只写入最近一次显式保存的状态。
     /// 当前模板若有未保存的编辑，写盘时临时用快照内容替换，写完立即还原——
     /// 既不把未保存的编辑落盘，也不影响用户继续编辑。
@@ -981,8 +977,6 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>点击释放：可编辑 ComboBox 聚焦时内部会把编辑框全选（覆盖点击定位，导致后续输入替换全文）；
-    /// 单击文本区后清除全选，保留 TextBox 已定位的光标——输入在光标处插入。双击选词（ClickCount=2）不受影响。</summary>
     /// <summary>下拉打开时清除编辑框全选：WPF 可编辑 ComboBox 打开下拉会全选编辑框且把 caret 重置为 0（覆盖点击定位，
     /// 导致"点击定位后输入替换全文/插错位置"——日志实证 PTextInput sel=0 caret=1 → DropDownOpened caret=0）。
     /// 清除后按点击定位恢复 caret（_lastClickCaret），后续输入在光标处插入。改名态不开下拉，不受影响。</summary>
@@ -1703,7 +1697,7 @@ public partial class MainWindow : Window
                 RemoveItemUi(ri, idx);
             }
         };
-        // 空框失焦即删，聚焦有内容框时的 _fresh 残留回收机制随之退役（点击转移焦点本身就会触发空框失焦删除）
+        // 空框失焦即删（点击转移焦点本身就会触发空框失焦删除）
 
         // 内容框 ×：该行最右端、垂直居中；hover 该框显示（与 + 成对）
         var delItem = new Button
