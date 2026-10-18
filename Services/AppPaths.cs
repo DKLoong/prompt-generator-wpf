@@ -3,46 +3,65 @@ using System.IO;
 namespace PromptGenerator.Services;
 
 /// <summary>
-/// 应用数据目录统一入口：%LOCALAPPDATA%\PromptGenerator\data。
-/// 旧版本把数据写在程序目录 data\（AppContext.BaseDirectory）：封装安装到 Program Files 等只读位置时会
-/// 写入失败并静默回退，且数据位置随安装位置漂移。现统一到用户可写目录，首次启动自动迁移旧数据。
+/// 应用数据目录统一入口，便携优先：
+///   1) exe 所在目录 data\（单文件发布时即 exe 旁）——可写则用，数据跟随程序文件，点击即用；
+///   2) 不可写（如被放到 Program Files 等受保护位置）回退 %LOCALAPPDATA%\PromptGenerator\data。
+/// 回退时若 exe 旁存在历史数据（只读也可读），自动复制一份到回退目录，避免"数据消失"。
 /// </summary>
 public static class AppPaths
 {
-    /// <summary>应用数据根目录（data）。首次访问时创建目录，并将旧位置（程序目录 data\）的用户数据迁移过来。</summary>
-    public static string DataDir { get; } = Init();
+    /// <summary>应用数据根目录（data）。首次访问时解析并创建。</summary>
+    public static string DataDir { get; } = ResolveDataDir();
 
-    private static string Init()
+    /// <summary>便携优先：exe 所在目录 data\，可写即用；否则回退 %LOCALAPPDATA%\PromptGenerator\data。</summary>
+    private static string ResolveDataDir()
     {
-        var dir = Path.Combine(
+        var portable = Path.Combine(AppContext.BaseDirectory, "data");
+        if (TryMakeWritable(portable)) return portable;
+
+        var fallback = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "PromptGenerator", "data");
-        Directory.CreateDirectory(dir);
-        TryMigrateFromLegacy(dir);
-        return dir;
+        Directory.CreateDirectory(fallback);
+        TryCopyFromPortable(fallback);
+        return fallback;
     }
 
-    /// <summary>
-    /// 旧版本数据在程序目录 data\：仅当目标为空（首次切换）且旧位置存在 templates.json 时，
-    /// 把模板/设置/日志复制到新目录（已存在的文件不覆盖，保守保留新位置文件）。失败不阻塞启动。
-    /// </summary>
-    private static void TryMigrateFromLegacy(string targetDir)
+    /// <summary>确保目录存在且可写：创建目录并写入/删除探针文件，避免"目录存在但只读"漏判。</summary>
+    private static bool TryMakeWritable(string dir)
     {
         try
         {
-            var legacy = Path.Combine(AppContext.BaseDirectory, "data");
-            if (!Directory.Exists(legacy)) return;
-            if (!File.Exists(Path.Combine(legacy, "templates.json"))) return;
-            if (File.Exists(Path.Combine(targetDir, "templates.json"))) return;
-
-            CopyFiles(legacy, targetDir);
-            var legacyLogs = Path.Combine(legacy, "logs");
-            if (Directory.Exists(legacyLogs))
-                CopyFiles(legacyLogs, Path.Combine(targetDir, "logs"));
+            Directory.CreateDirectory(dir);
+            var probe = Path.Combine(dir, ".write-probe");
+            File.WriteAllText(probe, string.Empty);
+            File.Delete(probe);
+            return true;
         }
         catch
         {
-            // 迁移失败不阻塞启动：新位置从空开始
+            return false;
+        }
+    }
+
+    /// <summary>回退场景：若 exe 旁存在历史用户数据（只读也可读）而目标为空，复制过来（已存在不覆盖）。失败不阻塞。</summary>
+    private static void TryCopyFromPortable(string targetDir)
+    {
+        try
+        {
+            var portable = Path.Combine(AppContext.BaseDirectory, "data");
+            if (!Directory.Exists(portable)) return;
+            if (!File.Exists(Path.Combine(portable, "templates.json"))) return;
+            if (File.Exists(Path.Combine(targetDir, "templates.json"))) return;
+
+            CopyFiles(portable, targetDir);
+            var logs = Path.Combine(portable, "logs");
+            if (Directory.Exists(logs))
+                CopyFiles(logs, Path.Combine(targetDir, "logs"));
+        }
+        catch
+        {
+            // 复制失败不阻塞启动：回退目录从空开始
         }
     }
 
