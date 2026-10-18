@@ -28,4 +28,13 @@
     <Resource Include="Assets\app-icon.png" />
   </ItemGroup>
 
+  <!-- 排除测试目录：SDK 默认通配会把 tests\**\*.cs 一并编入主项目 -->
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <None Remove="tests\**\*" />
+    <Page Remove="tests\**\*" />
+    <EmbeddedResource Remove="tests\**\*" />
+    <Content Remove="tests\**\*" />
+  </ItemGroup>
+
 </Project>
