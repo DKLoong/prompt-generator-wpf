@@ -32,7 +32,6 @@
                     <Button x:Name="PinBtn" Width="24" Height="24"
                             FontSize="13" Content="&#x1F4CC;" FontFamily="Segoe UI Emoji"
                             Foreground="{StaticResource MutedBrush}"
-                            BorderThickness="0"
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
                             ToolTipService.InitialShowDelay="800"
@@ -41,9 +40,7 @@
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="bd" Width="22" Height="22" CornerRadius="5"
-                                        Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}"
-                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                        Background="Transparent" BorderThickness="0">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <ControlTemplate.Triggers>

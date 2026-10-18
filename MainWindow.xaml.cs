@@ -153,10 +153,10 @@ public partial class MainWindow : Window
         tip.CustomPopupPlacementCallback = App.ToolTipPlacementCallback;
         tip.IsOpen = true;
         _keyboardTooltipButtons.Add(b);
-        // 键盘聚焦视觉：紫色描边（不遮图标，图标保持原色清晰可见），仅键盘导航聚焦时显示；
-        // 鼠标点击聚焦不亮，避免点击切换置顶时闪烁紫填充。
-        b.BorderBrush = (Brush)Application.Current.FindResource("AccentBrush");
-        b.BorderThickness = new Thickness(1);
+        // 键盘聚焦视觉：淡紫底 + 白色图标（与鼠标按压反馈一致：色块衬底、图标白色清晰可见，不被色块吞没）。
+        // 仅键盘导航聚焦时显示；鼠标点击聚焦不亮，避免点击切换置顶时闪烁紫填充。
+        b.Background = (Brush)Application.Current.FindResource("AccentHoverBrush");
+        b.Foreground = Brushes.White;
     }
 
     private static void OnButtonLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -167,8 +167,6 @@ public partial class MainWindow : Window
         // 恢复默认视觉（置顶态/置顶描边由触发器接管；hover 由触发器接管）
         b.ClearValue(Button.BackgroundProperty);
         b.ClearValue(Button.ForegroundProperty);
-        b.ClearValue(Button.BorderBrushProperty);
-        b.ClearValue(Button.BorderThicknessProperty);
     }
 
     /// <summary>获取按钮的 ToolTip 实例；字符串 ToolTip 首次键盘聚焦时物化为 ToolTip（便于程序化即时显示，隐式样式在显示时生效）。</summary>
