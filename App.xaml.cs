@@ -15,8 +15,13 @@ public partial class App : Application
     private static CustomPopupPlacement[] ToolTipPlacement(Size popupSize, Size targetSize, Point offset)
         => new[]
         {
+            // 首选：按钮下方、水平居中、外边距 2px
             new CustomPopupPlacement(
                 new Point((targetSize.Width - popupSize.Width) / 2, targetSize.Height + 2),
+                PopupPrimaryAxis.Horizontal),
+            // 按钮贴屏幕底边/窗口底部时翻转到按钮上方，仍水平居中、外边距 2px
+            new CustomPopupPlacement(
+                new Point((targetSize.Width - popupSize.Width) / 2, -popupSize.Height - 2),
                 PopupPrimaryAxis.Horizontal)
         };
 

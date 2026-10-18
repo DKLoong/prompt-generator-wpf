@@ -102,11 +102,11 @@ public partial class MainWindow : Window
         EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent,
             new RoutedEventHandler((sender, _) =>
             {
-                // 鼠标与键盘触发的点击统一清除焦点，避免按钮保持键盘焦点造成高亮残留
-                // （弹窗关闭/窗口还原时焦点归还按钮），键盘导航重新 Tab 即可
+                // 键盘（Enter/Space）触发的点击保留焦点：保证键盘导航连续、可再次 Enter 触发同一按钮；
+                // 鼠标触发的点击清除焦点并清空焦点作用域，避免高亮残留（弹窗关闭/窗口还原时焦点归还按钮）。
+                if (sender is Button kb && _keyboardClickTargets.Remove(kb)) return;
                 if (sender is not Button btn) return;
                 Keyboard.ClearFocus();
-                // 同时清空焦点作用域的聚焦元素：归还目标变成窗口而非按钮，彻底无残留
                 if (Window.GetWindow(btn) is Window win)
                     FocusManager.SetFocusedElement(win, null);
             }));
@@ -146,23 +146,17 @@ public partial class MainWindow : Window
         if (sender is not Button b || !fromKeyboardNav) return;
         if (GetOrCreateToolTip(b) is not ToolTip tip) return;
         Logging.Debug($"键盘聚焦ToolTip: btn={b.Name ?? b.Content?.ToString() ?? "?"} 已就绪");
+        // 放置走全局 ToolTip 样式（按钮下方居中 2px、超出翻转）；显式设置以防代码创建的
+        // ToolTip 未套用隐式样式（否则 Placement 默认 Mouse，键盘聚焦时鼠标在别处会看不到）。
         tip.PlacementTarget = b;
-        // 复刻系统键盘提示的放置：按钮下方、外边距 2px、水平居中对齐；超出显示范围时优先翻转到上方，
-        // 仍放不下时水平贴边兜底（ToolTip 独立窗口，超出主窗口但仍在屏幕内时无需翻转）。
         tip.Placement = PlacementMode.Custom;
-        tip.CustomPopupPlacementCallback = (sz, targetSz, _) => new[]
-        {
-            new CustomPopupPlacement(new Point((targetSz.Width - sz.Width) / 2, targetSz.Height + 2), PopupPrimaryAxis.Vertical),
-            new CustomPopupPlacement(new Point((targetSz.Width - sz.Width) / 2, -sz.Height - 2), PopupPrimaryAxis.Vertical),
-            new CustomPopupPlacement(new Point(0, targetSz.Height + 2), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(0, -sz.Height - 2), PopupPrimaryAxis.Horizontal),
-        };
+        tip.CustomPopupPlacementCallback = App.ToolTipPlacementCallback;
         tip.IsOpen = true;
         _keyboardTooltipButtons.Add(b);
-        // 键盘聚焦视觉（代码控制，不依赖 XAML IsKeyboardFocused 触发器）：
-        // 仅键盘导航聚焦时亮淡紫底 + 白图标；鼠标点击聚焦不亮，避免点击切换置顶时闪烁紫填充。
-        b.Background = (Brush)Application.Current.FindResource("AccentHoverBrush");
-        b.Foreground = Brushes.White;
+        // 键盘聚焦视觉：紫色描边（不遮图标，图标保持原色清晰可见），仅键盘导航聚焦时显示；
+        // 鼠标点击聚焦不亮，避免点击切换置顶时闪烁紫填充。
+        b.BorderBrush = (Brush)Application.Current.FindResource("AccentBrush");
+        b.BorderThickness = new Thickness(1);
     }
 
     private static void OnButtonLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
@@ -173,6 +167,8 @@ public partial class MainWindow : Window
         // 恢复默认视觉（置顶态/置顶描边由触发器接管；hover 由触发器接管）
         b.ClearValue(Button.BackgroundProperty);
         b.ClearValue(Button.ForegroundProperty);
+        b.ClearValue(Button.BorderBrushProperty);
+        b.ClearValue(Button.BorderThicknessProperty);
     }
 
     /// <summary>获取按钮的 ToolTip 实例；字符串 ToolTip 首次键盘聚焦时物化为 ToolTip（便于程序化即时显示，隐式样式在显示时生效）。</summary>
