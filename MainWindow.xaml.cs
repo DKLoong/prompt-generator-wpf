@@ -138,20 +138,14 @@ public partial class MainWindow : Window
 
     private static void OnButtonGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        // 仅 Tab/方向键键盘导航引起的聚焦即时弹提示；鼠标点击（无导航标记）与
-        // 窗口关闭等焦点归还（无导航标记）均不弹。标记单次消费。
-        // 不检查 IsMouseOver：键盘导航聚焦时鼠标可能恰好在按钮上，此时用户同样期望立即看到提示。
-        bool fromKeyboardNav = _keyboardNavPending;
-        _keyboardNavPending = false;
-        if (sender is not Button b || !fromKeyboardNav) return;
-        if (GetOrCreateToolTip(b) is not ToolTip tip)
-        {
-            // 无 ToolTip 的按钮不消费导航标记：Tab 导航可能经过中间按钮
-            // （如模板框 ComboBox 内部 ToggleButton），保留标记让后续目标按钮
-            // 仍能识别为键盘导航（否则 PinBtn 聚焦时 fromKeyboardNav 已是 false，不设白图标）。
-            _keyboardNavPending = true;
-            return;
-        }
+        // 任何方式聚焦到按钮（Tab 键盘导航、鼠标点击、焦点归还）时：
+        // 仅当鼠标不在按钮上（IsMouseOver=false）即时弹提示并设聚焦视觉。
+        // 鼠标在按钮上（IsMouseOver=true）跳过：那是鼠标点击/悬停路径，系统 hover 提示已覆盖，
+        // 且鼠标点击不应触发聚焦视觉（避免点击切换置顶时闪紫填充）。
+        // 不依赖 _keyboardNavPending：其置位/消费在 Tab 导航各场景存在漏洞
+        // （日志实证"鼠标失焦后 Tab 聚焦置顶"时标记为 false，导致 tooltip 不显示）。
+        if (sender is not Button b || b.IsMouseOver) return;
+        if (GetOrCreateToolTip(b) is not ToolTip tip) return;
         Logging.Debug($"键盘聚焦ToolTip: btn={b.Name ?? b.Content?.ToString() ?? "?"} 已就绪");
         // 放置走全局 ToolTip 样式（按钮下方居中 2px、超出翻转）；显式设置以防代码创建的
         // ToolTip 未套用隐式样式（否则 Placement 默认 Mouse，键盘聚焦时鼠标在别处会看不到）。
@@ -161,7 +155,6 @@ public partial class MainWindow : Window
         tip.IsOpen = true;
         _keyboardTooltipButtons.Add(b);
         // 键盘聚焦视觉：淡紫底 + 白色图标（与鼠标按压反馈一致：色块衬底、图标白色清晰可见，不被色块吞没）。
-        // 仅键盘导航聚焦时显示；鼠标点击聚焦不亮，避免点击切换置顶时闪烁紫填充。
         b.Background = (Brush)Application.Current.FindResource("AccentHoverBrush");
         b.Foreground = Brushes.White;
     }
