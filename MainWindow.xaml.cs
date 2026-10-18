@@ -144,7 +144,14 @@ public partial class MainWindow : Window
         bool fromKeyboardNav = _keyboardNavPending;
         _keyboardNavPending = false;
         if (sender is not Button b || !fromKeyboardNav) return;
-        if (GetOrCreateToolTip(b) is not ToolTip tip) return;
+        if (GetOrCreateToolTip(b) is not ToolTip tip)
+        {
+            // 无 ToolTip 的按钮不消费导航标记：Tab 导航可能经过中间按钮
+            // （如模板框 ComboBox 内部 ToggleButton），保留标记让后续目标按钮
+            // 仍能识别为键盘导航（否则 PinBtn 聚焦时 fromKeyboardNav 已是 false，不设白图标）。
+            _keyboardNavPending = true;
+            return;
+        }
         Logging.Debug($"键盘聚焦ToolTip: btn={b.Name ?? b.Content?.ToString() ?? "?"} 已就绪");
         // 放置走全局 ToolTip 样式（按钮下方居中 2px、超出翻转）；显式设置以防代码创建的
         // ToolTip 未套用隐式样式（否则 Placement 默认 Mouse，键盘聚焦时鼠标在别处会看不到）。
@@ -559,9 +566,13 @@ public partial class MainWindow : Window
         // 置顶态由模板的 Tag="pinned" 触发器渲染（紫色描边），未置顶时 Tag=null
         PinBtn.Tag = _pinned ? "pinned" : null;
         // 键盘切换置顶后焦点仍在本按钮：强制白色图标（本地值优先级最高），
-        // 保持"键盘聚焦=白图标"的视觉（覆盖置顶触发器紫）；失焦后 ClearValue 回落置顶紫/非置顶浅灰。
+        // 保持"键盘聚焦=白图标"的视觉（覆盖置顶触发器紫）；同时登记到焦点视觉集合，
+        // 失焦时 OnButtonLostKeyboardFocus 才能 ClearValue 回落置顶紫/非置顶浅灰。
         if (PinBtn.IsKeyboardFocused)
+        {
             PinBtn.Foreground = Brushes.White;
+            _keyboardTooltipButtons.Add(PinBtn);
+        }
     }
 
     private static Style? FindIconBtnSoftStyle() =>
