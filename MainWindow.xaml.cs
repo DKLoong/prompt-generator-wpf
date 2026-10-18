@@ -639,48 +639,7 @@ public partial class MainWindow : Window
             RefreshFilteredList();   // 清过滤条件恢复全量列表：无删除时视图不重建，漏清 Filter 会导致下次展开残留过滤结果（截图实证）
         }
         Logging.Debug($"SelChanged sel={(TemplateBox.SelectedItem as Template)?.Name} filter={_filterActive} loading={_loadingTemplates}");
-        bool removedAny = false;   // 离开清理是否删除了空白/临时模板（需重建视图避免列表残留）
-        // 离开当前模板前：
-        // - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。
-        //   除当前模板外，也清理列表中残留的其他历史编辑模板——例如：编辑历史A后未切走
-        //   又直接编辑历史B，onEdit 中 _loadingTemplates 会屏蔽本次切换的离开清理，
-        //   导致 A 残留在列表，需在后续任意一次切换时一并清除。
-        // - 有快照（保存过的模板）：从快照恢复，丢弃未保存的编辑
-        // - 无快照（新建未保存）：空白则删除，有内容则保留在内存
-        if (_current != null)
-        {
-            var tempToRemove = _data.Templates
-                .Where(x => x.IsTemp && !_savedSnapshots.ContainsKey(x.Id))
-                .ToList();
-            if (tempToRemove.Count > 0)
-            {
-                foreach (var t in tempToRemove)
-                {
-                    _data.Templates.Remove(t);
-                    // 同步清理"未保存新模板"标记（历史编辑模板不会命中，统一处理更稳妥）
-                    if (_pendingNewTemplate == t) _pendingNewTemplate = null;
-                }
-                try { _store.Save(_data); }
-                catch (Exception ex) { Logging.Warn($"模板改名落盘失败：{ex.Message}"); }
-            }
-            bool removedBlank = false;
-            // 当前模板若已被上述清理移除（历史编辑模板），跳过快照恢复等后续处理
-            if (_current != null && _data.Templates.Contains(_current))
-            {
-                if (_savedSnapshots.ContainsKey(_current.Id))
-                    RestoreFromSnapshot(_current);
-                else if (IsBlankNewTemplate(_current))
-                {
-                    _data.Templates.Remove(_current);
-                    // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
-                    if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
-                    removedBlank = true;
-                    try { _store.Save(_data); }
-                    catch (Exception ex) { Logging.Warn($"删除空白模板落盘失败：{ex.Message}"); }
-                }
-            }
-            removedAny = removedAny || tempToRemove.Count > 0 || removedBlank;
-        }
+        bool removedAny = LeaveCurrentTemplate();   // 离开清理：未保存历史临时模板移除 + 当前模板快照恢复/空白删除
         LoadCurrentTemplate();
         if (removedAny)
         {
@@ -698,6 +657,52 @@ public partial class MainWindow : Window
             Logging.Debug($"SelChanged rebuiltView removedAny={removedAny} sel={(sel as Template)?.Name}");
         }
         if (pick) FocusFirstInput();   // 鼠标点击候选项=确认切换：退出编辑态，聚焦第一个内容框段首（显示态保持灰字）
+    }
+
+    /// <summary>离开当前模板前的清理，返回是否有模板被移除/删除（调用方需据此重建视图避免列表残留）：
+    /// - 历史编辑产生的临时模板（未点"保存到模板"）：全部清除。除当前模板外，也清理列表中残留的其他历史编辑模板——
+    ///   例如：编辑历史A后未切走又直接编辑历史B，onEdit 中 _loadingTemplates 会屏蔽本次切换的离开清理，
+    ///   导致 A 残留在列表，需在后续任意一次切换时一并清除。
+    /// - 有快照（保存过的模板）：从快照恢复，丢弃未保存的编辑
+    /// - 无快照（新建未保存）：空白则删除，有内容则保留在内存
+    /// 历史编辑进入临时模板（HistoryWindow onEdit）也调用本方法：否则原模板的未保存改动会泄漏进原模板
+    /// （回归根因：_templatesView 是静态快照、不含临时模板，onEdit 的 SelectedItem=t 实际落空，
+    /// _loadingTemplates 又屏蔽了 SelectionChanged 的切换清理，快照恢复从未执行）。</summary>
+    private bool LeaveCurrentTemplate()
+    {
+        if (_current == null) return false;
+        var tempToRemove = _data.Templates
+            .Where(x => x.IsTemp && !_savedSnapshots.ContainsKey(x.Id))
+            .ToList();
+        bool removedAny = tempToRemove.Count > 0;
+        if (tempToRemove.Count > 0)
+        {
+            foreach (var t in tempToRemove)
+            {
+                _data.Templates.Remove(t);
+                // 同步清理"未保存新模板"标记（历史编辑模板不会命中，统一处理更稳妥）
+                if (_pendingNewTemplate == t) _pendingNewTemplate = null;
+            }
+            try { _store.Save(_data); }
+            catch (Exception ex) { Logging.Warn($"模板改名落盘失败：{ex.Message}"); }
+        }
+        bool removedBlank = false;
+        // 当前模板若已被上述清理移除（历史编辑模板），跳过快照恢复等后续处理
+        if (_data.Templates.Contains(_current))
+        {
+            if (_savedSnapshots.ContainsKey(_current.Id))
+                RestoreFromSnapshot(_current);
+            else if (IsBlankNewTemplate(_current))
+            {
+                _data.Templates.Remove(_current);
+                // 同步清理"未保存新模板"标记，否则下次点"新增模板"会被误判为仍有未保存模板
+                if (_pendingNewTemplate == _current) _pendingNewTemplate = null;
+                removedBlank = true;
+                try { _store.Save(_data); }
+                catch (Exception ex) { Logging.Warn($"删除空白模板落盘失败：{ex.Message}"); }
+            }
+        }
+        return removedAny || removedBlank;
     }
 
     /// <summary>空白新模板判定：名字仍是默认"新模板"，且所有字段名/内容都为空。</summary>
@@ -2203,6 +2208,11 @@ public partial class MainWindow : Window
         var win = new HistoryWindow(_data.History,
             onEdit: entry =>
             {
+                // 离开当前模板：未保存的历史临时模板移除、当前模板从快照恢复（丢弃未保存编辑）或空白即删。
+                // 若不先清理，原模板的未保存改动会泄漏进原模板——回归根因：_templatesView 是静态快照、
+                // 不含临时模板，下方 SelectedItem=t 实际落空（模板框仍显示旧模板名），_loadingTemplates 又
+                // 屏蔽了 SelectionChanged 的切换清理，快照恢复从未执行，未保存字段随切换被写盘。
+                LeaveCurrentTemplate();
                 // 基于历史快照新建临时模板，不覆盖当前模板；切走时自动删除，
                 // 除非用户点了"保存到模板"（那时会 SaveSnapshot 持久化）。
                 var t = new Template
@@ -2212,11 +2222,20 @@ public partial class MainWindow : Window
                     IsTemp = true
                 };
                 _data.Templates.Add(t);
+                // 重建显示视图（_templatesView 是静态快照，不反映新增/删除）：与"新增模板"一致的路径，
+                // 否则临时模板不在视图内，SelectedItem=t 落空、模板框仍显示旧模板名（回归现象A）
                 _loadingTemplates = true;
+                _filterActive = false;
+                _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+                _templatesView.Filter = null;
+                TemplateBox.ItemsSource = _templatesView;
+                TemplateBox.DisplayMemberPath = nameof(PromptGenerator.Models.Template.Name);
                 TemplateBox.SelectedItem = t;
+                TemplateBox.Text = t.Name;
                 _loadingTemplates = false;
                 _current = t;
                 RenderFields();
+                UpdateTemplateBoxVisual();
                 FocusFirstInput();
             },
             onDelete: entry =>
