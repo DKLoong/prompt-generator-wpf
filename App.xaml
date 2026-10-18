@@ -34,7 +34,7 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="ToolTipService.InitialShowDelay" Value="800" />
-            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="True" />
+            <Setter Property="ToolTipService.ShowsToolTipOnKeyboardFocus" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -45,9 +45,10 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{StaticResource Panel2Brush}" />
                             </Trigger>
-                            <!-- 键盘聚焦（Tab）：淡紫高亮，与 ActionBtn 一致，视觉确认焦点位置 -->
+                            <!-- 键盘聚焦（Tab）：淡紫底 + 图标白色，视觉确认焦点位置且图标清晰可辨 -->
                             <Trigger Property="IsKeyboardFocused" Value="True">
                                 <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter Property="Foreground" Value="White" />
                             </Trigger>
                             <!-- 按下反馈：背景紫色 + 图标白色，与设置窗口关闭按钮一致，确认点击已触发 -->
                             <Trigger Property="IsPressed" Value="True">

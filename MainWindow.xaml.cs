@@ -134,11 +134,12 @@ public partial class MainWindow : Window
 
     private static void OnButtonGotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
-        // 仅 Tab/方向键键盘导航引起的聚焦即时弹提示；鼠标点击（IsMouseOver 为真）与
+        // 仅 Tab/方向键键盘导航引起的聚焦即时弹提示；鼠标点击（无导航标记）与
         // 窗口关闭等焦点归还（无导航标记）均不弹。标记单次消费。
+        // 不检查 IsMouseOver：键盘导航聚焦时鼠标可能恰好在按钮上，此时用户同样期望立即看到提示。
         bool fromKeyboardNav = _keyboardNavPending;
         _keyboardNavPending = false;
-        if (sender is not Button b || b.IsMouseOver || !fromKeyboardNav) return;
+        if (sender is not Button b || !fromKeyboardNav) return;
         if (GetOrCreateToolTip(b) is not ToolTip tip) return;
         tip.PlacementTarget = b;
         tip.IsOpen = true;
