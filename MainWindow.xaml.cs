@@ -103,8 +103,13 @@ public partial class MainWindow : Window
             new RoutedEventHandler((sender, _) =>
             {
                 // 键盘触发的点击：不做任何焦点操作，按钮自然保持键盘焦点
-                if (sender is Button btn && _keyboardClickTargets.Remove(btn)) return;
+                if (sender is Button kb && _keyboardClickTargets.Remove(kb)) return;
+                if (sender is not Button btn) return;
                 Keyboard.ClearFocus();
+                // 同时清空焦点作用域的聚焦元素：防止窗口重新激活/弹窗关闭时焦点归还按钮，
+                // 造成点击后按钮高亮残留
+                if (Window.GetWindow(btn) is Window win)
+                    FocusManager.SetFocusedElement(win, null);
             }));
         // ToolTip 键盘聚焦策略：WPF 内建"键盘聚焦显示提示"同样走 InitialShowDelay（悬停延迟），
         // 导致 Tab 聚焦时提示被延迟。已在样式层用 ShowsToolTipOnKeyboardFocus=False 关闭内建键盘提示，
@@ -142,6 +147,7 @@ public partial class MainWindow : Window
         if (sender is not Button b || !fromKeyboardNav) return;
         if (GetOrCreateToolTip(b) is not ToolTip tip) return;
         tip.PlacementTarget = b;
+        tip.Placement = PlacementMode.Bottom;   // 键盘聚焦时鼠标可能在别处：ToolTip 相对按钮显示，而非跟随鼠标
         tip.IsOpen = true;
         _keyboardTooltipButtons.Add(b);
     }

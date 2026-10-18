@@ -53,12 +53,7 @@
                                         <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
                                         <Setter Property="Foreground" Value="White" />
                                     </Trigger>
-                                    <!-- 按下反馈：紫色底 + 图标白色，与标题栏其他按钮一致 -->
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
-                                        <Setter Property="Foreground" Value="White" />
-                                    </Trigger>
-                                    <!-- 置顶态：紫色描边 + 紫色图标；放最后，hover/press 时不叠紫填充 -->
+                                    <!-- 置顶态：紫色描边 + 紫色图标；放最后，hover/press 时不叠紫填充（点击切换置顶不闪紫填充） -->
                                     <Trigger Property="Tag" Value="pinned">
                                         <Setter TargetName="bd" Property="Background" Value="Transparent" />
                                         <Setter TargetName="bd" Property="BorderBrush" Value="#7c6cf0" />
