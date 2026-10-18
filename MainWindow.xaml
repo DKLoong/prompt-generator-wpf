@@ -31,12 +31,19 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
                     <Button x:Name="PinBtn" Width="24" Height="24"
                             FontSize="13" Content="&#x1F4CC;" FontFamily="Segoe UI Emoji"
-                            Foreground="{StaticResource MutedBrush}"
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
                             ToolTipService.InitialShowDelay="800"
                             ToolTipService.ShowsToolTipOnKeyboardFocus="False"
                             Click="PinBtn_Click">
+                        <!-- 默认前景用 Style setter 而非本地值：本地值优先级高于模板触发器（置顶态紫图标无法生效），
+                             且失焦 ClearValue 会连本地值一起清掉回退默认黑。Style setter 优先级低于模板触发器，
+                             置顶态紫图标生效；ClearValue 后回落样式浅灰（非置顶）/触发器紫（置顶）。 -->
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                            </Style>
+                        </Button.Style>
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border x:Name="bd" Width="22" Height="22" CornerRadius="5"
