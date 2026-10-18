@@ -1325,6 +1325,47 @@ public partial class MainWindow : Window
         ShowToast("已删除模板");
     }
 
+    private void ResetTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_current == null) return;
+        var r = MessageBox.Show($"将模板「{_current.Name}」恢复到默认状态，清除所有更改？", "重置模板",
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (r != MessageBoxResult.Yes) return;
+
+        // 默认状态：预置模板 → 出厂定义；用户自建模板 → 最近一次保存的状态（清除未保存更改）
+        var preset = TemplateStore.CreatePresetTemplates().FirstOrDefault(t => t.Id == _current.Id);
+        if (preset == null && !_savedSnapshots.TryGetValue(_current.Id, out preset))
+        {
+            ShowToast("该模板没有可重置的默认状态", false);
+            return;
+        }
+
+        // 退出改名/过滤态，防止 ComboBox 一致性回写干扰（点击按钮前 LostFocus 已先行处理，此处兜底）
+        _renaming = false;
+        _filterActive = false;
+        _userTyping = false;
+        _filterResetPending = false;
+
+        _current.Name = preset.Name;
+        _current.Fields.Clear();
+        foreach (var f in preset.Fields)
+            _current.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
+
+        SaveSnapshot(_current);         // 重置结果视为已保存状态，防止切走时被旧快照回滚
+        _pendingNewTemplate = null;     // 未保存的新模板被重置为默认内容后，允许再次新增
+        try { _store.Save(_data); } catch { }   // 落盘：预置模板出厂内容覆盖用户此前保存的修改
+
+        _loadingTemplates = true;
+        TemplateBox.Text = _current.Name;
+        if (TemplateBox.SelectedItem != _current) TemplateBox.SelectedItem = _current;
+        _loadingTemplates = false;
+        RefreshFilteredList();
+        RenderFields();
+        UpdateTemplateBoxVisual();
+        Logging.Info($"重置模板：{_current.Name}");
+        ShowToast("已重置为默认状态");
+    }
+
     private void SaveTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
