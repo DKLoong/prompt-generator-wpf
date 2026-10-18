@@ -238,7 +238,14 @@ public partial class MainWindow : Window
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 TemplateBox.Focus();
-                TemplateBox.IsDropDownOpen = true;
+                // 与鼠标点击箭头展开一致：进入检索模式（全选模板名，输入即替换+过滤）。
+                // 置位标记让 DropDownOpened 统一走 selectAll 分支；仅未开时置位——
+                // 已开时不触发 DropDownOpened，置位会残留导致下次展开误全选。
+                if (!TemplateBox.IsDropDownOpen)
+                {
+                    _arrowClickPending = true;
+                    TemplateBox.IsDropDownOpen = true;
+                }
             }), System.Windows.Threading.DispatcherPriority.Input);
         }
     }
