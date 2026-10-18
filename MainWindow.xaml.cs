@@ -575,6 +575,7 @@ public partial class MainWindow : Window
         }
         _loadingTemplates = false;
         LoadCurrentTemplate();
+        UpdateTemplateBoxVisual();   // 启动/刷新后按显示态刷新模板框文字颜色（灰字）
     }
 
     /// <summary>视图层显示顺序：开启"最近使用置顶"时，最近使用的 5 个模板排最前，其余保持存储顺序；不改变 _data.Templates 本身。</summary>
@@ -1179,6 +1180,8 @@ public partial class MainWindow : Window
             _loadingTemplates = false;
         }
         UpdateTemplateBoxVisual();   // 退出改名态：恢复显示态灰字
+        // ComboBox 选中项回写 Text 走异步路径：延迟补刷一次，覆盖"改名后聚焦内容框偶发白字"竞态
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(UpdateTemplateBoxVisual));
         return true;
     }
 
@@ -1849,8 +1852,10 @@ public partial class MainWindow : Window
                 e.Handled = true;
             }
         }
-        // Enter：改名态→确认改名并焦点到第一个字段名框；显示态（下拉关）→进入第一个字段；展开态→选中当前项、回填文本、收起、焦点到第一个内容框；过滤无匹配→不动作
-        if (e.Key == Key.Enter)
+        // Enter：仅"无修饰键"且"焦点在模板框内/下拉展开"时接管（改名确认、显示态进入、候选项确认）；
+        // 焦点在内容框时放行给内容框处理（Enter 加条、Shift+Enter 换行），避免误触发 FocusFirstInput
+        if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None
+            && (TemplateBox.IsKeyboardFocusWithin || TemplateBox.IsDropDownOpen))
         {
             if (_renaming)
             {
@@ -1946,11 +1951,18 @@ public partial class MainWindow : Window
         {
             try
             {
-                Clipboard.SetText(prompt);
+                // 剪贴板被其他进程瞬时占用（CLIPBRD_E_CANT_OPEN）时自动重试（最多 5 次、间隔 80ms），
+                // 避免"第一次 Ctrl+Enter 复制失败、第二次才成功"
+                for (int attempt = 0; attempt < 5; attempt++)
+                {
+                    try { Clipboard.SetText(prompt); break; }
+                    catch (Exception ex) when (attempt < 4) { await Task.Delay(80); }
+                }
                 _lastCopiedPrompt = prompt;   // 复制成功后才记录，失败允许重试
                 TouchRecentUse();             // 记录"最近使用"并刷新置顶
                 Logging.Prompt(LogLevel.Info, "复制", _current?.Name, prompt);
                 ShowToast("已复制到剪贴板");
+                Keyboard.ClearFocus();        // 复制成功：光标移出内容框（失焦）
             }
             catch (Exception ex)
             {
