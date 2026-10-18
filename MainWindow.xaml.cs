@@ -162,12 +162,18 @@ public partial class MainWindow : Window
     private static void OnButtonLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (sender is not Button b) return;
-        // 仅恢复"键盘聚焦时设置过视觉"的按钮：防止误清 SplitButton 等用本地值定制的按钮
-        // （其 Foreground=White 若被 ClearValue 会回退成 Button 默认黑色）
-        if (!_keyboardTooltipButtons.Remove(b)) return;
-        if (b.ToolTip is ToolTip tip) tip.IsOpen = false;
-        b.ClearValue(Button.BackgroundProperty);
-        b.ClearValue(Button.ForegroundProperty);
+        if (!_keyboardTooltipButtons.Contains(b)) return;
+        // 延迟清理：窗口 Topmost 切换（Enter 开启置顶）等可能引起短暂失焦后焦点立即恢复，
+        // 此时应保留 ToolTip 与键盘聚焦视觉（白色图标）；焦点真正移走（Tab 导航离开）后才清理。
+        // 用 Input 优先级延迟到焦点状态稳定后判断。
+        b.Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (b.IsKeyboardFocused) return;
+            _keyboardTooltipButtons.Remove(b);
+            if (b.ToolTip is ToolTip tip) tip.IsOpen = false;
+            b.ClearValue(Button.BackgroundProperty);
+            b.ClearValue(Button.ForegroundProperty);
+        }));
     }
 
     /// <summary>获取按钮的 ToolTip 实例；字符串 ToolTip 首次键盘聚焦时物化为 ToolTip（便于程序化即时显示，隐式样式在显示时生效）。</summary>
