@@ -70,9 +70,6 @@ public partial class MainWindow : Window
     private readonly HashSet<Button> _keyboardClickTargets = new();
     /// <summary>键盘聚焦（Tab）时已由本类即时打开的提示所在按钮；LostKeyboardFocus 时据此关闭，避免误关悬停路径打开的提示。</summary>
     private static readonly HashSet<Button> _keyboardTooltipButtons = new();
-    /// <summary>键盘导航标记（Tab/方向键）：仅键盘导航引起的焦点变化才即时弹提示；鼠标点击、窗口关闭等焦点归还不触发。</summary>
-    private static bool _keyboardNavPending;
-
     public MainWindow()
     {
         InitializeComponent();
@@ -96,7 +93,6 @@ public partial class MainWindow : Window
             new MouseButtonEventHandler((sender, _) =>
             {
                 _keyboardClickTargets.Remove((Button)sender);
-                _keyboardNavPending = false;
             }));
         EventManager.RegisterClassHandler(typeof(Button), Button.ClickEvent,
             new RoutedEventHandler((sender, _) =>
@@ -116,15 +112,9 @@ public partial class MainWindow : Window
             new KeyboardFocusChangedEventHandler(OnButtonGotKeyboardFocus));
         EventManager.RegisterClassHandler(typeof(Button), Button.LostKeyboardFocusEvent,
             new KeyboardFocusChangedEventHandler(OnButtonLostKeyboardFocus));
-        // 键盘导航标记：Tab/方向键的 KeyDown 先于键盘导航处理到达（隧道阶段），据此区分
-        // "键盘导航引起的聚焦"与"窗口关闭等焦点归还"，后者不即时弹提示。
-        EventManager.RegisterClassHandler(typeof(UIElement), UIElement.PreviewKeyDownEvent,
-            new KeyEventHandler((sender, e) =>
-            {
-                if (e.Key == Key.Tab || e.Key == Key.Up || e.Key == Key.Down
-                    || e.Key == Key.Left || e.Key == Key.Right)
-                    _keyboardNavPending = true;
-            }));
+        // 键盘聚焦 ToolTip 不依赖导航标记：其置位/消费在 Tab 导航各场景存在漏洞
+        // （日志实证"鼠标失焦后 Tab 聚焦置顶"时标记为 false，导致 tooltip 不显示），
+        // 故聚焦处理一律走 OnButtonGotKeyboardFocus 的 IsMouseOver 判断。
         TrayIcon.IconSource = new BitmapImage(
             new Uri("pack://application:,,,/Assets/app-icon.png", UriKind.Absolute));
         // 加载后对每个已有模板存快照
@@ -1147,7 +1137,7 @@ public partial class MainWindow : Window
         TemplateBox.IsDropDownOpen = false;
         // 先预填文本、后置空选中项：若先置 null 再设 Text，ComboBox 会因 Text 匹配选中项名反向同步 SelectedItem 回 _current，
         // 改名输入随即被一致性校正回写覆盖（实测输入'Bug'仍显示'Bug修复'）。无选中项时文本完全自由，改名确认/取消后再恢复指向当前模板。
-        TemplateBox.Text = _current.Name ?? "";
+        TemplateBox.Text = _current?.Name ?? "";
         _loadingTemplates = true;
         TemplateBox.SelectedItem = null;
         _loadingTemplates = false;
@@ -2075,7 +2065,7 @@ public partial class MainWindow : Window
                 for (int attempt = 0; attempt < 5; attempt++)
                 {
                     try { Clipboard.SetText(prompt); break; }
-                    catch (Exception ex) when (attempt < 4) { await Task.Delay(80); }
+                    catch (Exception) when (attempt < 4) { await Task.Delay(80); }
                 }
                 _lastCopiedPrompt = prompt;   // 复制成功后才记录，失败允许重试
                 TouchRecentUse();             // 记录"最近使用"并刷新置顶
