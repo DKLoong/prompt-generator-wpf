@@ -35,7 +35,7 @@
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
                             ToolTipService.InitialShowDelay="800"
-                            ToolTipService.ShowsToolTipOnKeyboardFocus="False"
+                            ToolTipService.ShowsToolTipOnKeyboardFocus="True"
                             Click="PinBtn_Click">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -47,6 +47,10 @@
                                     <!-- 未置顶：hover 浅灰底 -->
                                     <Trigger Property="IsMouseOver" Value="True">
                                         <Setter TargetName="bd" Property="Background" Value="#3c3d57" />
+                                    </Trigger>
+                                    <!-- 键盘聚焦（Tab）：淡紫底，视觉确认焦点位置 -->
+                                    <Trigger Property="IsKeyboardFocused" Value="True">
+                                        <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
                                     </Trigger>
                                     <!-- 置顶态：紫色描边 + 紫色图标；放最后，hover/press 时不叠紫填充 -->
                                     <Trigger Property="Tag" Value="pinned">
