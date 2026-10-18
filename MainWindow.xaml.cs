@@ -2110,13 +2110,18 @@ public partial class MainWindow : Window
                 {
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
+                    RedirectStandardInput = true,
+                    StandardInputEncoding = System.Text.Encoding.UTF8,   // 中文 prompt 按 UTF-8 传入，避免乱码
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+                // print 模式：prompt 通过 stdin 传入（claude -p 无位置参数时读取 stdin），
+                // 不再拼进命令行参数，规避 Windows 命令行 32767 字符上限
                 psi.ArgumentList.Add("-p");
-                psi.ArgumentList.Add(prompt);
                 using var proc = new Process { StartInfo = psi };
                 proc.Start();
+                await proc.StandardInput.WriteAsync(prompt);
+                proc.StandardInput.Close();
                 var outTask = proc.StandardOutput.ReadToEndAsync();
                 var errTask = proc.StandardError.ReadToEndAsync();
                 var exited = await Task.WhenAny(proc.WaitForExitAsync(), Task.Delay(120_000));
