@@ -1403,9 +1403,7 @@ public partial class MainWindow : Window
         foreach (var f in snap.Fields)
             _current.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
 
-        SaveSnapshot(_current);         // 重置结果视为已保存状态，防止切走时被旧快照回滚
-        try { _store.Save(_data); }
-        catch (Exception ex) { Logging.Warn($"重置模板落盘失败：{ex.Message}"); }   // 落盘内容与快照一致
+        // 无需 SaveSnapshot / 落盘：快照即磁盘内容，重置只是把内存恢复到该状态，写盘内容与磁盘现状相同（冗余）
 
         _loadingTemplates = true;
         TemplateBox.Text = _current.Name;
