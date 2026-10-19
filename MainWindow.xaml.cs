@@ -2050,6 +2050,22 @@ public partial class MainWindow : Window
                     _loadingTemplates = false;
                     RefreshFilteredList();          // 恢复全量列表（含置顶顺序）
                     UpdateTemplateBoxVisual();      // 切换后显示态：灰字
+                    // 离开清理：删除空白新模板/历史临时模板 + 快照恢复——与鼠标点击切换（SelectionChanged）一致。
+                    // 键盘路径此前缺失：方向键导航的 SelectionChanged 被 _filterActive && !pick 短路，
+                    // Enter 确认分支只回填文本/切换 _current，未删除未保存的空白新模板
+                    // （现象：重新展开下拉列表新模板仍在、再点新增提示"存在未保存的模板"）。
+                    bool removedAny = LeaveCurrentTemplate();
+                    if (removedAny)
+                    {
+                        // 删除空白/临时模板后重建视图：_templatesView 是静态快照不反映删除，重建避免列表残留已删模板
+                        _loadingTemplates = true;
+                        var keepSel = TemplateBox.SelectedItem;
+                        _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+                        _templatesView.Filter = null;
+                        TemplateBox.ItemsSource = _templatesView;
+                        if (keepSel != null) TemplateBox.SelectedItem = keepSel;
+                        _loadingTemplates = false;
+                    }
                     _current = sel;
                     RenderFields();
                     FocusFirstInput();
