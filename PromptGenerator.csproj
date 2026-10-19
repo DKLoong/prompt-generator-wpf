@@ -28,6 +28,11 @@
     <Resource Include="Assets\app-icon.png" />
   </ItemGroup>
 
+  <!-- 使用说明书随发布输出：publish 目录与 exe 同放，便于新用户查看 -->
+  <ItemGroup>
+    <None Include="README.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- 排除测试目录：SDK 默认通配会把 tests\**\*.cs 一并编入主项目 -->
   <ItemGroup>
     <Compile Remove="tests\**\*.cs" />
