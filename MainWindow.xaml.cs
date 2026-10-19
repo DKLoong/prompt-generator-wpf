@@ -45,7 +45,6 @@ public partial class MainWindow : Window
 
     /// <summary>异步回写免疫现场：RefreshFilteredList 置空选中项后，ComboBox 异步把 Text 回写为旧选中项名；
     /// 该回写晚于 _loadingTemplates 短路期，TextChanged 据此识别并恢复用户输入、保持过滤态。</summary>
-    private bool _filterResetPending;
     private string _filterResetText = "";
 
     /// <summary>用户最近一次键入后的过滤词（用户输入分支更新）。异步回写吞字（乱序覆盖新输入）时据此恢复，防止输入字符被回写吞掉。</summary>
@@ -627,7 +626,6 @@ public partial class MainWindow : Window
         if (_filterActive)
         {
             _filterActive = false;
-            _filterResetPending = false;
             _userTyping = false;
             _loadingTemplates = true;
             if (TemplateBox.SelectedItem is Template sel)
@@ -781,41 +779,82 @@ public partial class MainWindow : Window
         string text = TemplateBox.Text.Trim();
         bool equalsCurrent = string.Equals(text, _current.Name?.Trim(), StringComparison.Ordinal);
         Logging.Debug($"TextChanged text={TemplateBox.Text} filter={_filterActive} renaming={_renaming} equals={equalsCurrent} focus={Keyboard.FocusedElement?.GetType().Name}");
+        // 用户输入识别（提前于回写免疫判定）：中文 TSF 组合提交不触发 PreviewTextInput（日志实证），
+        // 若仅在下方编辑态判定，第二次中文输入（text≠旧 _lastUserText）会先被 IgnoreAsyncReset2 误判为
+        // 异步回写、恢复成旧过滤词（日志实证"为我通用"restore"通用"→ 内容丢失）。此处先识别并更新
+        // _lastUserText=本次输入，使回写免疫基准正确：随后 787 的 text!=_lastUserText 不满足，误伤消除。
+        // 判定与编辑态一致：PTextInput 键入（_userTyping）、无选中项（用户输入后编辑态置 null）、
+        // 或文本与选中项名不一致（组合提交/直插）。回写（text==选中项名）与方向键导航不满足，不更新。
+        bool isUserText = _userTyping
+            || TemplateBox.SelectedItem == null
+            || (TemplateBox.SelectedItem is Template selTU
+                && !string.Equals(text, selTU.Name?.Trim(), StringComparison.Ordinal));
+        if (isUserText)
+        {
+            _userTyping = false;
+            _lastUserText = text;
+        }
         // 异步回写吞字免疫：刷新视图产生的异步回写可能乱序覆盖用户刚键入的文本（日志实证 iu→u）；
         // 回写非用户输入（_userTyping=false）且仍在过滤态、文本与用户最近输入不一致时，恢复用户输入。
         // 点击候选项确认切换（_filterActive 已清）不受影响；方向键导航文本保持过滤词（==_lastUserText）不受影响。
+        // 追加两条排除：① 无选中项（编辑态，用户输入后 SelectedItem 已置 null，TSF 中文提交不置 _userTyping，
+        // 日志实证"为我通用"被误恢复成旧词"通用"）→ 属用户新输入而非回写，跳过恢复；
+        // ② 文本以过滤词开头（代→代码）→ 用户继续输入，跳过恢复。回写需要选中项名（SelectedItem 非空）。
         if (!_userTyping && _filterActive && !string.IsNullOrEmpty(_lastUserText)
-            && !string.Equals(text, _lastUserText, StringComparison.Ordinal))
+            && !string.Equals(text, _lastUserText, StringComparison.Ordinal)
+            && TemplateBox.SelectedItem != null
+            && !text.StartsWith(_lastUserText, StringComparison.Ordinal))
         {
             Logging.Debug($"IgnoreAsyncReset2 text={TemplateBox.Text} restore={_lastUserText}");
-            _filterResetPending = false;
+            // 同样置 null 消除"文本≠选中项名"悬置不一致（恢复的是用户输入词，必与选中项名不同，
+            // 悬置态下 ComboBox 内部会吞掉后续输入，日志实证热键唤起后回写恢复无第二次 TextChanged）。
+            if (TemplateBox.SelectedItem != null)
+            {
+                _loadingTemplates = true;
+                TemplateBox.SelectedItem = null;
+                _loadingTemplates = false;
+            }
             _loadingTemplates = true;
             TemplateBox.SetCurrentValue(ComboBox.TextProperty, _lastUserText);
             _loadingTemplates = false;
+            // 恢复后同步设置光标（不再 Background 兜底）：兜底在用户输入事件后执行会取消 IME 组合，
+            // 偶发"第二次输入被吞、框内保持旧词"（日志实证 RestoreCaret 在组合激活期执行）。
             SetCaretAt(_lastUserText.Length);
             return;
         }
         if (string.IsNullOrEmpty(text) || equalsCurrent)
         {
             // 回写免疫：视图 Refresh() 后 ComboBox 异步把 Text 回写为当前模板名（日志实证，回写时选中项非空），
-            // 该文本并非用户本次输入 → 恢复过滤词并保持过滤态。
+            // 该文本并非用户本次输入 → 恢复过滤词并保持过滤态。免疫不带现场标记、持续生效：
+            // 第二次输入组合激活时 ComboBox 再次把文本回写为选中项名（日志实证 10:54:37），若免疫只对
+            // 单次回写生效（消费即失效），此时会退出过滤态 → IsDisplayMode() 成立 → PreviewTextInput
+            // 补发事件把输入框清空（第二次输入内容丢失）。过滤态下文本回写为选中项名（≠过滤词）一律恢复。
             // 恢复必须用 SetCurrentValue（与用户键入同路径，ComboBox 视为编辑态不校正）；
             // SetValue/TextBox 直设都会触发 ComboBox 的一致性校正（清空或回写，日志实证）。
-            if (_filterActive && _filterResetPending && equalsCurrent
+            if (_filterActive && equalsCurrent
                 && !string.Equals(text, _filterResetText, StringComparison.Ordinal))
             {
                 Logging.Debug($"IgnoreAsyncReset text={TemplateBox.Text} restore={_filterResetText}");
-                _filterResetPending = false;
+                // 恢复过滤词时 SelectedItem 仍为当前模板（非 null）→ "文本≠选中项名"悬置不一致，
+                // ComboBox 内部会吞掉后续输入（日志实证：热键唤起回写恢复后第二次输入无 TextChanged）。
+                // 置 null 进入编辑态，保持与用户键入后的状态一致（Enter 确认/方向键导航不受影响）。
+                if (TemplateBox.SelectedItem != null)
+                {
+                    _loadingTemplates = true;
+                    TemplateBox.SelectedItem = null;
+                    _loadingTemplates = false;
+                }
                 _loadingTemplates = true;
                 TemplateBox.SetCurrentValue(ComboBox.TextProperty, _filterResetText);
                 _loadingTemplates = false;
+                // 恢复后同步设置光标（不再 Background 兜底，理由同上：避免取消 IME 组合）。
+                SetCaretAt(_filterResetText.Length);
                 return;
             }
             // 用户删除/清空导致空文本：进入编辑态（置 null）防止 ComboBox 把空文本回写为选中项名（日志实证）
             if (string.IsNullOrEmpty(text))
             {
                 _userTyping = false;
-                _filterResetPending = false;
                 if (TemplateBox.SelectedItem != null)
                 {
                     _loadingTemplates = true;
@@ -841,17 +880,15 @@ public partial class MainWindow : Window
         // 仅当文本变化源于用户键入（_userTyping）才进入编辑态（置 null + SetCurrentValue 恢复过滤词）：
         // 置 null 的 UpdateText 会清空文本（日志实证），需 SetCurrentValue（与键入同路径）恢复；
         // 方向键导航（_userTyping=false）保留 SelectedItem，维持候选项高亮与 Enter 确认语义。
-        _filterResetPending = true;
+        // 编辑态判定放宽：中文 TSF 组合提交不触发 PreviewTextInput（日志实证），_userTyping 保持 false，
+        // 若只认 _userTyping 会跳过编辑态 → SelectedItem 不置 null → ComboBox 回写覆盖输入、_lastUserText 不更新。
+        // 进入编辑态：PTextInput 键入（_userTyping）、无选中项（用户输入后，ComboBox 无选中项名可回写）、
+        // 或文本与选中项名不一致（组合提交/直插）。方向键导航（text==选中项名）与点击候选项确认不受影响。
         _filterResetText = text;
         _filterActive = true;
         if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
-        if (_userTyping)
+        if (isUserText)
         {
-            _userTyping = false;
-            _lastUserText = text;   // 记录用户输入后的过滤词（异步回写吞字免疫据此恢复）
-            int caret = -1;
-            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tb)
-                caret = tb.CaretIndex;   // 键入后光标已在插入字符之后；记录以便置 null/恢复后还原
             if (TemplateBox.SelectedItem != null)
             {
                 _loadingTemplates = true;
@@ -861,9 +898,19 @@ public partial class MainWindow : Window
             _loadingTemplates = true;
             TemplateBox.SetCurrentValue(ComboBox.TextProperty, text);
             _loadingTemplates = false;
-            if (caret >= 0) SetCaretAt(caret);   // 置 null 的 UpdateText 会把 caret 归零，还原到键入后位置（尊重 ←/点击移动过的光标）
         }
         RefreshFilteredList();
+        // Refresh() 会把 caret 重置回 0（内部文本同步回写），必须在 Refresh 后设置。
+        // 同步设置即已生效（日志实证 EditEnd tbCaret=0 → SetCaretAt 后 RestoreCaret tbCaret=2），
+        // 不再追加 Background 兜底：兜底在用户输入事件之后执行，若用户紧接着输入（连续输入场景）
+        // 会把光标设回末尾、干扰输入法组合（偶发"第二次输入被吞、框内保持旧词"）。
+        // 强制段尾符合过滤态输入的核心预期（方向键导航不进编辑态，不受影响）。
+        if (isUserText)
+        {
+            if (TemplateBox.Template?.FindName("PART_EditableTextBox", TemplateBox) is TextBox tbE)
+                Logging.Debug($"EditEnd tbText={tbE.Text} tbSel={tbE.SelectionLength} tbCaret={tbE.CaretIndex} combo={TemplateBox.Text}");
+            SetCaretAt(text.Length);
+        }
     }
 
     /// <summary>把模板框编辑文本框的光标设置到指定位置并取消选中：置 null/SetCurrentValue 恢复文本后 caret 会停在段首，
@@ -906,7 +953,6 @@ public partial class MainWindow : Window
             UpdateTemplateBoxVisual();
             Logging.Debug($"PTextInput enterInput text={TemplateBox.Text}");
         }
-        _filterResetPending = false;   // 新一轮真实输入：异步回写免疫失效，由本次输入接管
         _userTyping = true;            // 标记本次文本变化来自用户键入（TextChanged 过滤分支消费）
         Logging.Debug($"PreviewTextInput focus={Keyboard.FocusedElement?.GetType().Name} text={TemplateBox.Text} filter={_filterActive}");
         _filterActive = true;
@@ -937,7 +983,6 @@ public partial class MainWindow : Window
     {
         if (!_filterActive) return;
         _userTyping = false;          // 离开过滤态：编辑标记失效
-        _filterResetPending = false;   // 离开过滤态：免疫现场失效
         _filterActive = false;
         _loadingTemplates = true;
         TemplateBox.Text = _current?.Name ?? "";
@@ -1000,7 +1045,11 @@ public partial class MainWindow : Window
             else
             {
                 if (tb.SelectionLength > 0) tb.SelectionLength = 0;
-                if (_lastClickCaret >= 0) SetCaretAt(_lastClickCaret);
+                // 输入触发开下拉（_filterActive=true，如删除/历史编辑后键入首字符）：不还原光标——
+                // _lastClickCaret 是点击文本的残留值，此时 SetCaretAt 会把组合提交后的光标移回段首（日志实证
+                // DropDownOpened clearSel caret=0 → 编辑态 SetCaretAt(0)）；仅"用户点击文本→点箭头"的定位还原场景
+                // （_filterActive=false）才按点击位置恢复。
+                if (!_filterActive && _lastClickCaret >= 0) SetCaretAt(_lastClickCaret);
                 Logging.Debug($"DropDownOpened clearSel caret={tb.CaretIndex}");
             }
         }
@@ -1114,7 +1163,6 @@ public partial class MainWindow : Window
         // 离开过滤态：清过滤条件，防改名输入受过滤态残留/异步回写干扰（日志实证过滤残留）
         _filterActive = false;
         _userTyping = false;
-        _filterResetPending = false;
         RefreshFilteredList();
         TemplateBox.IsDropDownOpen = false;
         // 先预填文本、后置空选中项：若先置 null 再设 Text，ComboBox 会因 Text 匹配选中项名反向同步 SelectedItem 回 _current，
@@ -1192,7 +1240,6 @@ public partial class MainWindow : Window
             && (_filterActive || !string.Equals(TemplateBox.Text?.Trim(), _current?.Name?.Trim(), StringComparison.Ordinal)))
         {
             _userTyping = false;
-            _filterResetPending = false;
             _filterActive = false;
             _loadingTemplates = true;
             TemplateBox.Text = _current?.Name ?? "";
@@ -1349,7 +1396,6 @@ public partial class MainWindow : Window
         _renaming = false;
         _filterActive = false;
         _userTyping = false;
-        _filterResetPending = false;
 
         _current.Name = preset.Name;
         _current.Fields.Clear();
