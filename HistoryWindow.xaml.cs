@@ -88,16 +88,27 @@ public partial class HistoryWindow : Window
         if (sender is not Button btn || btn.Tag is not string id) return;
         var entry = _history.FirstOrDefault(h => h.Id == id);
         if (entry == null) return;
+        // 输入源区分：鼠标点击删除（Mouse.DirectlyOver 落在该按钮上）→ 删除后焦点落回窗口本身；
+        // 键盘触发（Tab/Shift+Tab 导航到按钮后按空格，鼠标不在按钮上）→ 保留"相邻行复制按钮聚焦"，
+        // 便于连续键盘操作（既有正确设计，不修改）。
+        bool mouseClick = IsPointerOverButton(System.Windows.Input.Mouse.DirectlyOver as DependencyObject, btn);
         // 记录删除前在排序列表中的位置，用于删除后确定焦点落点
         var sortedBefore = _history.OrderByDescending(h => h.Timestamp).ToList();
         int idx = sortedBefore.IndexOf(entry);
         _history.Remove(entry);
         _onDelete?.Invoke(entry);
         RefreshList();
-        // 删除后焦点：非最后一条 → 下一条的复制；最后一条 → 上一条的复制；仅剩一条 → 关闭
-        // （延后到 Loaded 优先级，确保刷新后的条目容器已生成）
+        // 删除后焦点：（延后到 Loaded 优先级，确保刷新后的条目容器已生成）
+        // - 鼠标点击：焦点落回窗口本身、不在任何控件上（消除相邻行复制按钮的键盘高亮残留）
+        // - 键盘触发：非最后一条 → 下一条的复制；最后一条 → 上一条的复制；仅剩一条 → 关闭
         Dispatcher.BeginInvoke(new System.Action(() =>
         {
+            if (mouseClick)
+            {
+                System.Windows.Input.FocusManager.SetFocusedElement(this, null);
+                Focus();
+                return;
+            }
             var remaining = _history.OrderByDescending(h => h.Timestamp).ToList();
             if (remaining.Count == 0)
             {
@@ -113,6 +124,14 @@ public partial class HistoryWindow : Window
                 System.Windows.Input.Keyboard.Focus(copyBtn);
             }
         }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>鼠标当前是否悬停/按在指定按钮上（沿视觉树向上命中该按钮）。用于区分鼠标点击与键盘触发（空格/Enter）。</summary>
+    private static bool IsPointerOverButton(DependencyObject? node, Button btn)
+    {
+        for (DependencyObject? d = node; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d == btn) return true;
+        return false;
     }
 
     /// <summary>按条目定位其行内 Tag 与 Id 匹配的"复制"按钮。</summary>
