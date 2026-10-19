@@ -68,9 +68,8 @@ public class TemplateStore
     }
 
     /// <summary>预置模板集：通用任务 + 13 个日常场景（信息检索/文档编辑/图片生成等）。
-    /// 仅首次启动（无数据文件）时写入；之后用户可自由更改、删除、保存（数据文件为准，不会补回）。
-    /// public 供"重置模板"按 Id 恢复出厂默认内容。</summary>
-    public static List<Template> CreatePresetTemplates()
+    /// 仅首次启动（无数据文件）时写入；之后用户可自由更改、删除、保存（数据文件为准，不会补回）。</summary>
+    private static List<Template> CreatePresetTemplates()
     {
         return new List<Template>
         {

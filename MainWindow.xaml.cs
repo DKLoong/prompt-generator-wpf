@@ -1382,15 +1382,14 @@ public partial class MainWindow : Window
     private void ResetTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
-        var r = MessageBox.Show($"将模板「{_current.Name}」恢复到默认状态，清除所有更改？", "重置模板",
+        var r = MessageBox.Show($"将模板「{_current.Name}」恢复到上一次保存的状态？", "重置模板",
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (r != MessageBoxResult.Yes) return;
 
-        // 默认状态：预置模板 → 出厂定义；用户自建模板 → 最近一次保存的状态（清除未保存更改）
-        var preset = TemplateStore.CreatePresetTemplates().FirstOrDefault(t => t.Id == _current.Id);
-        if (preset == null && !_savedSnapshots.TryGetValue(_current.Id, out preset))
+        // 重置 = 恢复到上一次保存的状态（快照），适用于所有已保存的模板（含预置模板，不区分出厂/自建）
+        if (!_savedSnapshots.TryGetValue(_current.Id, out var snap))
         {
-            ShowToast("该模板没有可重置的默认状态", false);
+            ShowToast("该模板尚未保存过，无可重置的状态", false);
             return;
         }
 
@@ -1399,15 +1398,14 @@ public partial class MainWindow : Window
         _filterActive = false;
         _userTyping = false;
 
-        _current.Name = preset.Name;
+        _current.Name = snap.Name;
         _current.Fields.Clear();
-        foreach (var f in preset.Fields)
+        foreach (var f in snap.Fields)
             _current.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
 
         SaveSnapshot(_current);         // 重置结果视为已保存状态，防止切走时被旧快照回滚
-        _pendingNewTemplate = null;     // 未保存的新模板被重置为默认内容后，允许再次新增
         try { _store.Save(_data); }
-        catch (Exception ex) { Logging.Warn($"重置模板落盘失败：{ex.Message}"); }   // 落盘：预置模板出厂内容覆盖用户此前保存的修改
+        catch (Exception ex) { Logging.Warn($"重置模板落盘失败：{ex.Message}"); }   // 落盘内容与快照一致
 
         _loadingTemplates = true;
         TemplateBox.Text = _current.Name;
@@ -1417,7 +1415,7 @@ public partial class MainWindow : Window
         RenderFields();
         UpdateTemplateBoxVisual();
         Logging.Info($"重置模板：{_current.Name}");
-        ShowToast("已重置为默认状态");
+        ShowToast("已恢复到上次保存状态");
     }
 
     private void SaveTemplate_Click(object sender, RoutedEventArgs e)
