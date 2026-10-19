@@ -654,6 +654,8 @@ public partial class MainWindow : Window
             _loadingTemplates = false;
             Logging.Debug($"SelChanged rebuiltView removedAny={removedAny} sel={(sel as Template)?.Name}");
         }
+        UpdateTemplateBoxVisual();   // 切换完成：强制刷新显示态灰字——点击候选项的 enterInput 分支（显示态误命中候选项点击）已把文字置白，
+                                     // 而场景1/历史编辑切换的 rebuiltView 在 _loadingTemplates 下同步 Text、短路 TextChanged，切换路径无刷新则白字残留（日志实证）
         if (pick) FocusFirstInput();   // 鼠标点击候选项=确认切换：退出编辑态，聚焦第一个内容框段首（显示态保持灰字）
     }
 
