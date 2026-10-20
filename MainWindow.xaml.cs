@@ -24,6 +24,12 @@ public partial class MainWindow : Window
     private Template? _current;
     private bool _loadingTemplates;
     private bool _suppressReclaim;
+    /// <summary>条目移动事务标记：被移动条目移出视觉树触发失焦时，抑制失焦删除逻辑（防跨字段/拖拽移动空条目误删）。</summary>
+    private bool _suppressItemRemove;
+    /// <summary>拖拽调序当前高亮的目标行（条目行/字段头行）；原 Background 均为 Transparent，可安全恢复。</summary>
+    private Grid? _dragHighlightItem;
+    /// <summary>拖拽落点高亮刷（半透明淡紫，与主题紫 0x7c6cf0 同色系）。</summary>
+    private static readonly Brush DragHighlightBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x7c, 0x6c, 0xf0));
     private bool _allowClose; // 托盘"退出"触发时置 true，允许真正关闭
     private readonly SettingsStore _settingsStore;
     private AppSettings _settings;
@@ -1641,6 +1647,31 @@ public partial class MainWindow : Window
         Grid.SetColumn(delRow, 1);
         head.MouseEnter += (_, _) => { delRow.Opacity = 1; delRow.IsHitTestVisible = true; };
         head.MouseLeave += (_, _) => { delRow.Opacity = 0; delRow.IsHitTestVisible = false; };
+        // 拖拽落点：字段头行——拖到字段名区域 = 插到该字段开头；同样用 Preview 隧道先于字段名框 TextBox 收到。
+        head.PreviewDragOver += (_, e) =>
+        {
+            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            SetDragHighlight(head);
+        };
+        head.PreviewDrop += (_, e) =>
+        {
+            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            e.Handled = true;
+            if (e.Data.GetData("PGItemDrag") is not int[] data || data.Length != 2) return;
+            ClearDragHighlight();
+            if (MoveItemTo(data[0], data[1], getRowIndex(), 0))
+                FocusItemInput(getRowIndex(), 0);
+        };
+        head.DragLeave += (_, e) =>
+        {
+            // 进入子元素（字段名框）也会触发父 DragLeave：仅当鼠标真正移出本行矩形才清除高亮
+            if (_dragHighlightItem != head) return;
+            var pos = e.GetPosition(head);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > head.ActualWidth || pos.Y > head.ActualHeight)
+                ClearDragHighlight();
+        };
 
         // 右列：子项列表
         var right = new StackPanel { HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -1681,6 +1712,15 @@ public partial class MainWindow : Window
             item.Parent is StackPanel right && right.Parent is Grid rowGrid
                 ? FieldHost.Children.IndexOf(rowGrid) / 2
                 : rowIndex;
+        // 条目可能被跨字段移动（键盘/拖拽）：闭包 field 仍是创建时的源字段，数据操作必须反查当前所属字段，
+        // 否则 getIndex()（目标位置）与 field.Items（源字段列表）错位导致索引越界（TextChanged/× 删除实测崩溃）。
+        Func<Field> getField = () =>
+        {
+            int ri = getRowIndex();
+            return _current != null && ri >= 0 && ri < _current.Fields.Count
+                ? _current.Fields[ri]
+                : field;   // 兜底：异常态回退创建时字段，避免越界崩溃
+        };
 
         var num = new TextBlock
         {
@@ -1691,6 +1731,59 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             TextAlignment = TextAlignment.Right
         };
+        // 序号列：拖拽调序把手（移动超 5px 启动）+ 单击全选（聚焦本行内容框并全选文本，便于快速删除/覆盖）。
+        // 按下进入潜在拖拽并捕获鼠标；未超阈值松开视为单击。
+        bool numPress = false;
+        Point numPressPos = default;
+        bool numDrag = false;
+        num.MouseLeftButtonDown += (_, e) =>
+        {
+            if (_current == null) return;
+            numPress = true;
+            numDrag = false;
+            numPressPos = e.GetPosition(num);
+            num.CaptureMouse();
+            e.Handled = true;
+        };
+        num.MouseMove += (_, e) =>
+        {
+            if (!numPress || numDrag) return;
+            var pos = e.GetPosition(num);
+            if (Math.Abs(pos.X - numPressPos.X) > 5 || Math.Abs(pos.Y - numPressPos.Y) > 5)
+            {
+                numDrag = true;
+                num.ReleaseMouseCapture();   // 触发 LostMouseCapture 清 numPress（DoDragDrop 用已捕获的 fr/fi）
+                int fr = getRowIndex();
+                int fi = getIndex();
+                item.Opacity = 0.5;   // 源行半透明拖影反馈
+                try
+                {
+                    if (_current != null && fr >= 0 && fi >= 0)
+                        DragDrop.DoDragDrop(num, new DataObject("PGItemDrag", new[] { fr, fi }), DragDropEffects.Move);
+                }
+                finally
+                {
+                    item.Opacity = 1;
+                    ClearDragHighlight();
+                }
+            }
+        };
+        num.MouseLeftButtonUp += (_, e) =>
+        {
+            if (!numPress || numDrag) return;
+            numPress = false;
+            num.ReleaseMouseCapture();
+            // 单击：聚焦本行内容框并全选（num 在 ta 之前创建，运行时从 item.Children 反查）
+            var targetTa = item.Children.OfType<AutoGrowTextBox>().FirstOrDefault();
+            if (targetTa != null)
+            {
+                targetTa.Focus();
+                Keyboard.Focus(targetTa);
+                targetTa.SelectAll();
+            }
+            e.Handled = true;
+        };
+        num.LostMouseCapture += (_, _) => { numPress = false; numDrag = false; };
 
         // 内容框插入 ＋：编号左侧（不与编号重叠）、垂直居中；hover 该框与 × 成对显示
         var addItem = new Button
@@ -1734,20 +1827,21 @@ public partial class MainWindow : Window
                 InsertItem(getRowIndex(), getIndex() + 1);
             }
         };
-        ta.TextChanged += (_, _) => field.Items[getIndex()] = ta.Text;
+        ta.TextChanged += (_, _) => getField().Items[getIndex()] = ta.Text;
         ta.LostKeyboardFocus += (_, e) =>
         {
             if (_suppressReclaim) return;
+            if (_suppressItemRemove) return;   // 移动事务中：被移动条目移出视觉树触发的失焦不执行删除
             int idx = getIndex();
             int ri = getRowIndex();
-            Logging.Debug($"ItemLostFocus ri={ri} idx={idx} empty={string.IsNullOrWhiteSpace(ta.Text)} count={field.Items.Count} newFocus={e.NewFocus?.GetType().Name ?? "null"}");
+            Logging.Debug($"ItemLostFocus ri={ri} idx={idx} empty={string.IsNullOrWhiteSpace(ta.Text)} count={getField().Items.Count} newFocus={e.NewFocus?.GetType().Name ?? "null"}");
             // 字段内非唯一的空内容框（新增插入或手动清空产生）统一在失焦后删除、编号自动重排；
             // 该字段仅剩这一个内容框时保留（watermark 态），与 × 的"仅一条清空"语义一致。
             if (string.IsNullOrWhiteSpace(ta.Text)
-                && field.Items.Count > 1)
+                && getField().Items.Count > 1)
             {
                 Logging.Debug($"ItemEmptyRemoved ri={ri} idx={idx}");
-                field.Items.RemoveAt(idx);
+                getField().Items.RemoveAt(idx);
                 RemoveItemUi(ri, idx);
             }
         };
@@ -1772,10 +1866,10 @@ public partial class MainWindow : Window
         {
             int idx = getIndex();
             int ri = getRowIndex();
-            if (field.Items.Count == 1)
+            if (getField().Items.Count == 1)
             {
                 // 仅一条：清空文本，并把光标聚焦到被清空的这个框
-                field.Items[0] = "";
+                getField().Items[0] = "";
                 ta.Text = "";
                 ta.Focus();
                 Keyboard.Focus(ta);
@@ -1783,7 +1877,7 @@ public partial class MainWindow : Window
             else
             {
                 // 多条：删除该框后，删的是第一条则聚焦新的第一条（原下一条），否则聚焦上一条
-                field.Items.RemoveAt(idx);
+                getField().Items.RemoveAt(idx);
                 RemoveItemUi(ri, idx);
                 FocusItemInput(ri, idx == 0 ? 0 : idx - 1, caretToEnd: true);
             }
@@ -1807,6 +1901,37 @@ public partial class MainWindow : Window
         {
             addItem.Opacity = 0; addItem.IsHitTestVisible = false;
             delItem.Opacity = 0; delItem.IsHitTestVisible = false;
+        };
+        // 拖拽落点：条目行——鼠标在行上半插其前、下半插其后；整行高亮指示。
+        // Preview 隧道事件先于内容框 TextBox 收到（TextBox 自身会吞冒泡拖放），且仅处理本应用的条目拖拽
+        // （DataObject 格式 PGItemDrag），文本拖拽等外部拖放仍放行给 TextBox。
+        item.PreviewDragOver += (_, e) =>
+        {
+            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            e.Effects = DragDropEffects.Move;
+            e.Handled = true;
+            SetDragHighlight(item);
+        };
+        item.PreviewDrop += (_, e) =>
+        {
+            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            e.Handled = true;
+            if (e.Data.GetData("PGItemDrag") is not int[] data || data.Length != 2) return;
+            var pos = e.GetPosition(item);
+            int tr = getRowIndex();
+            int ti = getIndex() + (pos.Y >= item.ActualHeight / 2 ? 1 : 0);
+            if (tr == data[0] && ti > data[1]) ti--;   // 同字段目标在源之后：换算为移除后索引
+            ClearDragHighlight();
+            if (MoveItemTo(data[0], data[1], tr, ti))
+                FocusItemInput(tr, ti);
+        };
+        item.DragLeave += (_, e) =>
+        {
+            // 进入子元素（内容框）也会触发父 DragLeave：仅当鼠标真正移出本行矩形才清除高亮
+            if (_dragHighlightItem != item) return;
+            var pos = e.GetPosition(item);
+            if (pos.X < 0 || pos.Y < 0 || pos.X > item.ActualWidth || pos.Y > item.ActualHeight)
+                ClearDragHighlight();
         };
         return item;
     }
@@ -1932,9 +2057,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// 按"逻辑相邻位置"移动条目（支持跨字段，Alt+↑/↓ 调序）：
     /// 字段内：与相邻条目交换；上移越字段顶 → 进入上一字段末尾，下移越字段底 → 进入下一字段开头；
-    /// 全局边界（首字段首条上移 / 末字段末条下移）：无操作。
-    /// 源字段仅剩此条目且被移走 → 在原位置补一条空条目（维持"每字段至少一条"不变量）。
-    /// 移动后焦点跟随条目到新位置。
+    /// 全局边界（首字段首条上移 / 末字段末条下移）：无操作。移动后焦点跟随条目到新位置。
     /// </summary>
     private void MoveItem(int fromRow, int fromIdx, int delta)
     {
@@ -1944,21 +2067,11 @@ public partial class MainWindow : Window
         var src = fields[fromRow];
         if (fromIdx < 0 || fromIdx >= src.Items.Count) return;
 
-        // 同字段内相邻移动（先定位 UI，避免数据/UI 不一致）
+        // 同字段内相邻移动
         int sameTarget = fromIdx + delta;
         if (sameTarget >= 0 && sameTarget < src.Items.Count)
         {
-            var rowGrids = FieldHost.Children.OfType<Grid>().ToList();
-            if (fromRow >= rowGrids.Count) return;
-            var right = rowGrids[fromRow].Children.OfType<StackPanel>().FirstOrDefault();
-            if (right == null || fromIdx >= right.Children.Count) return;
-            var v = src.Items[fromIdx];
-            src.Items.RemoveAt(fromIdx);
-            src.Items.Insert(sameTarget, v);
-            var ui = right.Children[fromIdx];
-            right.Children.RemoveAt(fromIdx);
-            right.Children.Insert(sameTarget, ui);
-            RenumberItems(right);
+            MoveItemTo(fromRow, fromIdx, fromRow, sameTarget);
             FocusItemInput(fromRow, sameTarget);
             return;
         }
@@ -1968,31 +2081,84 @@ public partial class MainWindow : Window
         if (toRow < 0 || toRow >= fields.Count) return;   // 全局边界：无操作
         int toIdx = delta > 0 ? 0 : fields[toRow].Items.Count;
 
+        MoveItemTo(fromRow, fromIdx, toRow, toIdx);
+        FocusItemInput(toRow, toIdx);
+    }
+
+    /// <summary>
+    /// 把条目从任意位置移动到任意位置（键盘 Alt+↑/↓ 与鼠标拖拽共用的核心）：
+    /// 数据与 UI 同步移除/插入；同字段目标在源之后时目标索引前移 1；源字段仅剩此条目且被移走 →
+    /// 在原位置补一条空条目（维持"每字段至少一条"不变量）；移动事务内置 _suppressItemRemove，
+    /// 抑制被移动条目移出视觉树触发失焦导致的误删（空条目场景）；最后重编号受影响栏。
+    /// 不做焦点处理：调用方在完成后 FocusItemInput 跟随。返回是否实际移动（false = 无效/原位）。
+    /// </summary>
+    private bool MoveItemTo(int fromRow, int fromIdx, int toRow, int toIdx)
+    {
+        if (_current == null) return false;
+        var fields = _current.Fields;
+        if (fromRow < 0 || fromRow >= fields.Count || toRow < 0 || toRow >= fields.Count) return false;
+        var src = fields[fromRow];
+        if (fromIdx < 0 || fromIdx >= src.Items.Count) return false;
+        if (toIdx < 0 || toIdx > fields[toRow].Items.Count) return false;
+
         var grids = FieldHost.Children.OfType<Grid>().ToList();
-        if (fromRow >= grids.Count || toRow >= grids.Count) return;
+        if (fromRow >= grids.Count || toRow >= grids.Count) return false;
         var fromRight = grids[fromRow].Children.OfType<StackPanel>().FirstOrDefault();
         var toRight = grids[toRow].Children.OfType<StackPanel>().FirstOrDefault();
-        if (fromRight == null || toRight == null || fromIdx >= fromRight.Children.Count) return;
-        if (toIdx < 0 || toIdx > toRight.Children.Count) return;
+        if (fromRight == null || toRight == null || fromIdx >= fromRight.Children.Count) return false;
+        if (toIdx > toRight.Children.Count) return false;
 
-        var item = src.Items[fromIdx];
-        src.Items.RemoveAt(fromIdx);
-        fields[toRow].Items.Insert(toIdx, item);
-        var ui2 = fromRight.Children[fromIdx];
-        fromRight.Children.RemoveAt(fromIdx);
-        toRight.Children.Insert(toIdx, ui2);
+        // 同字段原位：无操作（目标索引统一为"移除后语义"——同字段且目标在源之后时由调用方换算）
+        if (fromRow == toRow && toIdx == fromIdx) return false;
 
-        // 源字段变空 → 原位置补一条空条目（保持每字段至少一条的不变量）
-        if (src.Items.Count == 0)
+        _suppressItemRemove = true;
+        try
         {
-            src.Items.Add("");
-            var newItem = RenderItem(fromRow, src, 0);
-            fromRight.Children.Insert(0, newItem);
+            var v = src.Items[fromIdx];
+            src.Items.RemoveAt(fromIdx);
+            fields[toRow].Items.Insert(toIdx, v);
+
+            var ui = fromRight.Children[fromIdx];
+            fromRight.Children.RemoveAt(fromIdx);
+            toRight.Children.Insert(toIdx, ui);
+
+            // 源字段变空 → 原位置补一条空条目（保持每字段至少一条的不变量）
+            if (src.Items.Count == 0)
+            {
+                src.Items.Add("");
+                var newItem = RenderItem(fromRow, src, 0);
+                fromRight.Children.Insert(0, newItem);
+            }
+        }
+        finally
+        {
+            _suppressItemRemove = false;
         }
 
         RenumberItems(fromRight);
-        RenumberItems(toRight);
-        FocusItemInput(toRow, toIdx);
+        if (fromRight != toRight) RenumberItems(toRight);
+        return true;
+    }
+
+    // ---------------- 鼠标拖拽调序（序号列把手；复用 MoveItemTo 核心） ----------------
+
+    /// <summary>拖拽落点高亮：恢复上一个高亮行，高亮当前目标行（条目行/字段头行，原 Background 均为 Transparent 可安全恢复）。</summary>
+    private void SetDragHighlight(Grid target)
+    {
+        if (_dragHighlightItem == target) return;
+        if (_dragHighlightItem != null) _dragHighlightItem.Background = Brushes.Transparent;
+        _dragHighlightItem = target;
+        target.Background = DragHighlightBrush;
+    }
+
+    /// <summary>清除拖拽落点高亮（拖拽结束/取消/离开时调用）。</summary>
+    private void ClearDragHighlight()
+    {
+        if (_dragHighlightItem != null)
+        {
+            _dragHighlightItem.Background = Brushes.Transparent;
+            _dragHighlightItem = null;
+        }
     }
 
     // ---------------- 键盘全局快捷键 ----------------
