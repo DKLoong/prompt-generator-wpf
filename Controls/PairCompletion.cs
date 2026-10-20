@@ -43,6 +43,11 @@ public static class PairCompletion
         public int SelStartAtStart;      // 输入开始时的选区起点
         public int SelLenAtStart;        // 输入开始时的选区长度
         public string? SelectedAtStart;  // 输入开始时的选中文本（无选中为 null）
+        /// <summary>最近一次已知的非空选区。TSF 输入法（中文模式）在组合开始前会先清除/移动选区，
+        /// 导致 PreviewTextInputStart 记录不到选中现场；此处兜底保存，供 IME 分支恢复包裹（有效性由文本结构校验把关）。</summary>
+        public int LastSelStart;
+        public int LastSelLen;
+        public string? LastSelectedText;
     }
 
     private static readonly DependencyProperty StateProperty =
@@ -55,6 +60,7 @@ public static class PairCompletion
         tb.SetValue(AttachedFlagProperty, true);
         TextCompositionManager.AddPreviewTextInputStartHandler(tb, OnPreviewTextInputStart);
         tb.PreviewTextInput += OnPreviewTextInput;
+        tb.SelectionChanged += OnSelectionChanged;
     }
 
     private static ImeState GetState(TextBox tb)
@@ -67,6 +73,17 @@ public static class PairCompletion
         return s;
     }
 
+    /// <summary>记录最近一次非空选区（空选区不覆盖，保留最后已知值供输入法吞选区的兜底）。</summary>
+    private static void OnSelectionChanged(object sender, RoutedEventArgs e)
+    {
+        var tb = (TextBox)sender;
+        if (tb.SelectionLength <= 0) return;
+        var s = GetState(tb);
+        s.LastSelStart = tb.SelectionStart;
+        s.LastSelLen = tb.SelectionLength;
+        s.LastSelectedText = tb.SelectedText;
+    }
+
     /// <summary>记录本次输入开始时的文本与选区。任何文本输入（键盘/输入法）都会先经此事件，早于文本落地。</summary>
     private static void OnPreviewTextInputStart(object sender, TextCompositionEventArgs e)
     {
@@ -76,6 +93,13 @@ public static class PairCompletion
         s.SelStartAtStart = tb.SelectionStart;
         s.SelLenAtStart = tb.SelectionLength;
         s.SelectedAtStart = tb.SelectionLength > 0 ? tb.SelectedText : null;
+        // 输入法（TSF）可能在组合开始前已清除选区：用最后已知非空选区兜底，有效性由 IME 分支的文本结构校验把关
+        if (s.SelLenAtStart == 0 && s.LastSelLen > 0)
+        {
+            s.SelStartAtStart = s.LastSelStart;
+            s.SelLenAtStart = s.LastSelLen;
+            s.SelectedAtStart = s.LastSelectedText;
+        }
     }
 
     private static void OnPreviewTextInput(object sender, TextCompositionEventArgs e)
@@ -87,7 +111,8 @@ public static class PairCompletion
         // 文本在事件前已变化 → 输入法（TSF）已把字符写入文本，进入"提交后修复"路径
         bool imeCommitted = st.TextAtStart != null && tb.Text != st.TextAtStart;
         var edit = ComputePairEdit(tb.Text, tb.SelectionStart, tb.SelectionLength, ch,
-                                   imeCommitted, st.SelectedAtStart, st.SelStartAtStart, st.SelLenAtStart);
+                                   imeCommitted, st.SelectedAtStart, st.SelStartAtStart, st.SelLenAtStart,
+                                   st.TextAtStart);
         st.TextAtStart = null;   // 现场仅用于单次输入
         if (edit is not { } e2) return;
         e.Handled = true;
@@ -99,10 +124,13 @@ public static class PairCompletion
     /// 计算成对符号输入后的编辑结果（纯函数，便于测试）。
     /// imeCommitted=true：字符已被输入法写入文本（位于光标前），按"提交后"状态修复（补右符/跳过/选区包裹恢复）；
     /// 否则视为直接键盘输入（文本尚未变化）：有选中→包裹，光标后是右符号→跳过，否则补对。
+    /// textAtStart：输入开始时的原文（PreviewTextInputStart 现场），仅 imeCommitted 的选区包裹恢复使用，
+    /// 用于验证"提交后文本 == 原文删掉选中段后插入 ch"，防止过期选区/未替换场景误包裹。
     /// </summary>
     public static PairEdit? ComputePairEdit(
         string text, int selStart, int selLen, char ch,
-        bool imeCommitted, string? selectedAtStart, int selStartAtStart, int selLenAtStart)
+        bool imeCommitted, string? selectedAtStart, int selStartAtStart, int selLenAtStart,
+        string? textAtStart)
     {
         if (!OpenToClose.TryGetValue(ch, out char close) && !ClosingChars.Contains(ch))
             return null;
@@ -112,8 +140,13 @@ public static class PairCompletion
             // 输入法已把字符写入文本（位于光标前）：核对提交字符确在光标前
             if (selLen != 0 || selStart <= 0 || selStart > text.Length || text[selStart - 1] != ch)
                 return null;
-            // 本次提交吞掉了输入开始时的选中文本 → 用保存的选区恢复包裹
-            if (selLenAtStart > 0 && selectedAtStart != null && selStart - 1 == selStartAtStart
+            // 本次提交吞掉了输入开始时的选中文本 → 用保存的选区恢复包裹。
+            // 验证：提交后文本 == 原文删掉选中段后插入 ch（不依赖光标位置假设，覆盖输入法先清除选区等场景）；
+            // 结构不符（过期选区/未替换）时不做包裹，保持原有补右符等行为。
+            if (selLenAtStart > 0 && selectedAtStart != null
+                && textAtStart != null
+                && selStartAtStart >= 0 && selStartAtStart + selLenAtStart <= textAtStart.Length
+                && text == textAtStart[..selStartAtStart] + ch + textAtStart[(selStartAtStart + selLenAtStart)..]
                 && OpenToClose.TryGetValue(ch, out char wrapClose))
             {
                 int openPos = selStart - 1;
