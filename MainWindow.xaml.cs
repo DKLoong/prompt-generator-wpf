@@ -1887,6 +1887,114 @@ public partial class MainWindow : Window
         return result;
     }
 
+    // ---------------- 字段编辑区焦点定位（键盘快捷键用） ----------------
+
+    /// <summary>定位键盘焦点所在字段行（字段名框或内容框内）；不在字段编辑区返回 -1。</summary>
+    private int GetFocusedRowIndex()
+    {
+        if (Keyboard.FocusedElement is not DependencyObject fo) return -1;
+        var rows = FieldHost.Children.OfType<Grid>().ToList();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var head = rows[i].Children.OfType<Grid>().FirstOrDefault();
+            if (head?.Children.OfType<TextBox>().FirstOrDefault() is TextBox nb && nb == fo) return i;
+            var right = rows[i].Children.OfType<StackPanel>().FirstOrDefault();
+            if (right != null && right.Children.OfType<Grid>().Any(g => g.Children.OfType<AutoGrowTextBox>().Any(t => t == fo)))
+                return i;
+        }
+        return -1;
+    }
+
+    /// <summary>定位键盘焦点所在字段行与条目索引（焦点须在内容框内）；否则返回 false。</summary>
+    private bool TryGetFocusedItem(out int rowIndex, out int itemIndex)
+    {
+        rowIndex = -1;
+        itemIndex = -1;
+        if (Keyboard.FocusedElement is not AutoGrowTextBox ta) return false;
+        var rows = FieldHost.Children.OfType<Grid>().ToList();
+        for (int i = 0; i < rows.Count; i++)
+        {
+            var right = rows[i].Children.OfType<StackPanel>().FirstOrDefault();
+            if (right == null) continue;
+            for (int j = 0; j < right.Children.Count; j++)
+            {
+                if (right.Children[j] is Grid g && g.Children.OfType<AutoGrowTextBox>().FirstOrDefault() == ta)
+                {
+                    rowIndex = i;
+                    itemIndex = j;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 按"逻辑相邻位置"移动条目（支持跨字段，Alt+↑/↓ 调序）：
+    /// 字段内：与相邻条目交换；上移越字段顶 → 进入上一字段末尾，下移越字段底 → 进入下一字段开头；
+    /// 全局边界（首字段首条上移 / 末字段末条下移）：无操作。
+    /// 源字段仅剩此条目且被移走 → 在原位置补一条空条目（维持"每字段至少一条"不变量）。
+    /// 移动后焦点跟随条目到新位置。
+    /// </summary>
+    private void MoveItem(int fromRow, int fromIdx, int delta)
+    {
+        if (_current == null) return;
+        var fields = _current.Fields;
+        if (fromRow < 0 || fromRow >= fields.Count) return;
+        var src = fields[fromRow];
+        if (fromIdx < 0 || fromIdx >= src.Items.Count) return;
+
+        // 同字段内相邻移动（先定位 UI，避免数据/UI 不一致）
+        int sameTarget = fromIdx + delta;
+        if (sameTarget >= 0 && sameTarget < src.Items.Count)
+        {
+            var rowGrids = FieldHost.Children.OfType<Grid>().ToList();
+            if (fromRow >= rowGrids.Count) return;
+            var right = rowGrids[fromRow].Children.OfType<StackPanel>().FirstOrDefault();
+            if (right == null || fromIdx >= right.Children.Count) return;
+            var v = src.Items[fromIdx];
+            src.Items.RemoveAt(fromIdx);
+            src.Items.Insert(sameTarget, v);
+            var ui = right.Children[fromIdx];
+            right.Children.RemoveAt(fromIdx);
+            right.Children.Insert(sameTarget, ui);
+            RenumberItems(right);
+            FocusItemInput(fromRow, sameTarget);
+            return;
+        }
+
+        // 跨字段：上移溢出 → 上一字段末尾；下移溢出 → 下一字段开头
+        int toRow = fromRow + (delta > 0 ? 1 : -1);
+        if (toRow < 0 || toRow >= fields.Count) return;   // 全局边界：无操作
+        int toIdx = delta > 0 ? 0 : fields[toRow].Items.Count;
+
+        var grids = FieldHost.Children.OfType<Grid>().ToList();
+        if (fromRow >= grids.Count || toRow >= grids.Count) return;
+        var fromRight = grids[fromRow].Children.OfType<StackPanel>().FirstOrDefault();
+        var toRight = grids[toRow].Children.OfType<StackPanel>().FirstOrDefault();
+        if (fromRight == null || toRight == null || fromIdx >= fromRight.Children.Count) return;
+        if (toIdx < 0 || toIdx > toRight.Children.Count) return;
+
+        var item = src.Items[fromIdx];
+        src.Items.RemoveAt(fromIdx);
+        fields[toRow].Items.Insert(toIdx, item);
+        var ui2 = fromRight.Children[fromIdx];
+        fromRight.Children.RemoveAt(fromIdx);
+        toRight.Children.Insert(toIdx, ui2);
+
+        // 源字段变空 → 原位置补一条空条目（保持每字段至少一条的不变量）
+        if (src.Items.Count == 0)
+        {
+            src.Items.Add("");
+            var newItem = RenderItem(fromRow, src, 0);
+            fromRight.Children.Insert(0, newItem);
+        }
+
+        RenumberItems(fromRight);
+        RenumberItems(toRight);
+        FocusItemInput(toRow, toIdx);
+    }
+
     // ---------------- 键盘全局快捷键 ----------------
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -1916,15 +2024,86 @@ public partial class MainWindow : Window
             Close();
             return;
         }
+        // ---- 字段编辑区快捷键（全键盘操作；条件均限定焦点在字段编辑区，模板框焦点下自动放行）----
+        // Alt+Enter：当前字段下方插入新字段（与字段间隙"+"同路径）。Ctrl+Shift+Enter 易触发输入法切换，
+        // 已替换；WPF 中 Alt 组合键 Key 报 Key.System、实际键在 SystemKey，两种形式都兼容。
+        if ((e.Key == Key.Enter || (e.Key == Key.System && e.SystemKey == Key.Enter))
+            && Keyboard.Modifiers == ModifierKeys.Alt)
+        {
+            int row = GetFocusedRowIndex();
+            if (row >= 0)
+            {
+                e.Handled = true;
+                AddFieldAt(row + 1);
+            }
+            return;
+        }
+        // Ctrl+D：删除当前条目（仅剩一条时清空并聚焦，语义与内容框 × 一致）
+        if (e.Key == Key.D && Keyboard.Modifiers == ModifierKeys.Control
+            && TryGetFocusedItem(out int dRow, out int dIdx))
+        {
+            e.Handled = true;
+            var f = _current!.Fields[dRow];
+            if (f.Items.Count == 1)
+            {
+                f.Items[0] = "";
+                var rowGrid = FieldHost.Children.OfType<Grid>().ElementAt(dRow);
+                var right = rowGrid.Children.OfType<StackPanel>().FirstOrDefault();
+                var ta = right?.Children.OfType<Grid>().FirstOrDefault()?.Children.OfType<AutoGrowTextBox>().FirstOrDefault();
+                if (ta != null) { ta.Text = ""; ta.Focus(); Keyboard.Focus(ta); }
+            }
+            else
+            {
+                f.Items.RemoveAt(dIdx);
+                RemoveItemUi(dRow, dIdx);
+                FocusItemInput(dRow, dIdx == 0 ? 0 : dIdx - 1, caretToEnd: true);
+            }
+            return;
+        }
+        // Alt+↑/↓：上下移动当前条目（字段内交换，跨字段溢出：上移→上字段末尾、下移→下字段开头）。
+        // WPF 中 Alt 组合键 Key 报 Key.System、实际键在 SystemKey，两种形式都兼容。
+        {
+            bool altUp = e.Key == Key.Up || (e.Key == Key.System && e.SystemKey == Key.Up);
+            bool altDown = e.Key == Key.Down || (e.Key == Key.System && e.SystemKey == Key.Down);
+            if ((altUp || altDown) && Keyboard.Modifiers == ModifierKeys.Alt
+                && TryGetFocusedItem(out int mvRow, out int mvIdx))
+            {
+                e.Handled = true;
+                MoveItem(mvRow, mvIdx, altDown ? 1 : -1);
+                return;
+            }
+        }
+        // Ctrl+↑/↓：跳转上一个/下一个字段的首个输入框（越界静默无操作；焦点不在字段区则放行后续逻辑）
+        if ((e.Key == Key.Up || e.Key == Key.Down) && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            int ctrlRow = GetFocusedRowIndex();
+            if (ctrlRow >= 0)
+            {
+                int count = _current?.Fields.Count ?? 0;
+                int target = ctrlRow + (e.Key == Key.Down ? 1 : -1);
+                if (target >= 0 && target < count) FocusItemInput(target, 0);
+                e.Handled = true;
+                return;
+            }
+        }
+        // Ctrl+R：重置当前模板（与"重置模板"按钮一致，含确认弹窗）
+        if (e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            ResetTemplate_Click(this, new RoutedEventArgs());
+            return;
+        }
         // 改名态：拦截所有"打开列表"的入口（箭头已拦，F4/Alt+Down 一并拦），提示先退出编辑
-        if (_renaming && (e.Key == Key.F4 || (e.Key == Key.Down && Keyboard.Modifiers == ModifierKeys.Alt)))
+        if (_renaming && (e.Key == Key.F4
+            || ((e.Key == Key.Down || (e.Key == Key.System && e.SystemKey == Key.Down)) && Keyboard.Modifiers == ModifierKeys.Alt)))
         {
             e.Handled = true;
             ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
             return;
         }
         // 显示态：F4/Alt+Down 弹列表浏览（不改只读模板名）；↓ 首次弹列表，列表已开则交导航块
-        if (IsDisplayMode() && (e.Key == Key.F4 || (e.Key == Key.Down && Keyboard.Modifiers == ModifierKeys.Alt)))
+        if (IsDisplayMode() && (e.Key == Key.F4
+            || ((e.Key == Key.Down || (e.Key == Key.System && e.SystemKey == Key.Down)) && Keyboard.Modifiers == ModifierKeys.Alt)))
         {
             e.Handled = true;
             if (!TemplateBox.IsDropDownOpen) TemplateBox.IsDropDownOpen = true;
@@ -1938,6 +2117,20 @@ public partial class MainWindow : Window
             e.Handled = true;
             TemplateBox.IsDropDownOpen = true;
             return;
+        }
+        // 显示态：模板框收起状态裸 ↑ 循环切换——首条继续按 ↑ 跳到最后一条（其余上移仍走 ComboBox
+        // 原生逐位切换，SelectionChanged 路径一致、焦点保持模板框；↓ 既有逻辑完全不动）。
+        if (IsDisplayMode() && e.Key == Key.Up && Keyboard.Modifiers == ModifierKeys.None
+            && TemplateBox.IsKeyboardFocusWithin && !TemplateBox.IsDropDownOpen
+            && TemplateBox.SelectedIndex == 0)
+        {
+            int count = _templatesView?.Cast<object>().Count() ?? 0;
+            if (count > 1)
+            {
+                TemplateBox.SelectedIndex = count - 1;
+                e.Handled = true;
+                return;
+            }
         }
         // 输入态（点击文本区定位光标/键入清空后，非显示态）与改名态：裸 ↓/↑ 不做任何操作——
         // 可编辑 ComboBox 原生行为会在下拉关闭时选中首项并回填模板名（全选、触发 SelChanged 切换当前模板），
