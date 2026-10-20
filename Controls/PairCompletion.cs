@@ -48,6 +48,14 @@ public static class PairCompletion
         public int LastSelStart;
         public int LastSelLen;
         public string? LastSelectedText;
+        /// <summary>最近一次 IME"符号替换选中文本"的输入前现场（原文+原选区）。WPF Undo 只恢复文本与光标、
+        /// 不恢复选区，且补全/跳过会产生多个撤销单元——保存前后快照由 UI 层 Ctrl+Z 兜底：循环 Undo 到原文 + Select 恢复选中。</summary>
+        public string? BeforeText;
+        public int BeforeStart;
+        public int BeforeLen;
+        /// <summary>输入后快照（文本+光标）：包裹/跳过/替换后的最终态，用于识别"符号操作后未做其他操作"。</summary>
+        public string? AfterText;
+        public int AfterCaret = -1;
     }
 
     private static readonly DependencyProperty StateProperty =
@@ -73,6 +81,27 @@ public static class PairCompletion
         return s;
     }
 
+    /// <summary>查询最近一次 IME"符号替换选中文本"的输入前后快照；非该场景返回 false。
+    /// 供内容框 Ctrl+Z 一次性撤销整个符号操作（循环 Undo 到原文 + Select 恢复选中）使用。</summary>
+    internal static bool TryGetLastSymbolEditState(TextBox tb,
+        out string beforeText, out int beforeStart, out int beforeLen,
+        out string afterText, out int afterCaret)
+    {
+        beforeText = "";
+        beforeStart = 0;
+        beforeLen = 0;
+        afterText = "";
+        afterCaret = -1;
+        var s = GetState(tb);
+        if (s.BeforeText == null || s.AfterText == null || s.AfterCaret < 0) return false;
+        beforeText = s.BeforeText;
+        beforeStart = s.BeforeStart;
+        beforeLen = s.BeforeLen;
+        afterText = s.AfterText;
+        afterCaret = s.AfterCaret;
+        return true;
+    }
+
     /// <summary>记录最近一次非空选区（空选区不覆盖，保留最后已知值供输入法吞选区的兜底）。</summary>
     private static void OnSelectionChanged(object sender, RoutedEventArgs e)
     {
@@ -93,8 +122,12 @@ public static class PairCompletion
         s.SelStartAtStart = tb.SelectionStart;
         s.SelLenAtStart = tb.SelectionLength;
         s.SelectedAtStart = tb.SelectionLength > 0 ? tb.SelectedText : null;
-        // 输入法（TSF）可能在组合开始前已清除选区：用最后已知非空选区兜底，有效性由 IME 分支的文本结构校验把关
-        if (s.SelLenAtStart == 0 && s.LastSelLen > 0)
+        // 输入法（TSF）可能在组合开始前已清除选区：用最后已知非空选区兜底（须与当前文本位置一致，
+        // 防止过期选区误用——如补闭符号时本无选中，但 LastSel 仍是此前包裹操作留下的选区）；有效性由 IME 分支的文本结构校验把关
+        if (s.SelLenAtStart == 0 && s.LastSelLen > 0
+            && s.LastSelectedText != null
+            && tb.Text.Length >= s.LastSelStart + s.LastSelLen
+            && tb.Text.Substring(s.LastSelStart, s.LastSelLen) == s.LastSelectedText)
         {
             s.SelStartAtStart = s.LastSelStart;
             s.SelLenAtStart = s.LastSelLen;
@@ -108,16 +141,38 @@ public static class PairCompletion
         char ch = e.Text[0];
         var tb = (TextBox)sender;
         var st = GetState(tb);
+        string? textAtStart = st.TextAtStart;
         // 文本在事件前已变化 → 输入法（TSF）已把字符写入文本，进入"提交后修复"路径
-        bool imeCommitted = st.TextAtStart != null && tb.Text != st.TextAtStart;
+        bool imeCommitted = textAtStart != null && tb.Text != textAtStart;
         var edit = ComputePairEdit(tb.Text, tb.SelectionStart, tb.SelectionLength, ch,
                                    imeCommitted, st.SelectedAtStart, st.SelStartAtStart, st.SelLenAtStart,
-                                   st.TextAtStart);
+                                   textAtStart);
         st.TextAtStart = null;   // 现场仅用于单次输入
-        if (edit is not { } e2) return;
-        e.Handled = true;
-        if (e2.NewText != null) tb.Text = e2.NewText;
-        if (e2.Caret != null) { tb.SelectionStart = e2.Caret.Value; tb.SelectionLength = 0; }
+        if (edit is { } e2)
+        {
+            e.Handled = true;
+            if (e2.NewText != null) tb.Text = e2.NewText;
+            if (e2.Caret != null) { tb.SelectionStart = e2.Caret.Value; tb.SelectionLength = 0; }
+        }
+        // IME 符号替换选中文本（含包裹/补右/跳过/直接替换）现场：保存输入前原文+原选区 与 输入后文本+光标，
+        // 供内容框 Ctrl+Z 循环 Undo 到原文并手动恢复选中（WPF Undo 不恢复选区、单元数不定）。直接键盘路径不记录。
+        if (imeCommitted && st.SelectedAtStart is { Length: > 0 }
+            && (OpenToClose.ContainsKey(ch) || ClosingChars.Contains(ch)))
+        {
+            st.BeforeText = textAtStart;
+            st.BeforeStart = st.SelStartAtStart;
+            st.BeforeLen = st.SelLenAtStart;
+            st.AfterText = tb.Text;
+            st.AfterCaret = tb.SelectionStart;
+        }
+        // 已有符号编辑现场且本次为"跳过/补右"类（结果文本与快照一致，仅光标移动，如《东大》后补》跳过）：
+        // 同步快照光标，保证 Ctrl+Z 仍能精确匹配"补全后未做其他操作"并一次撤销到原文。
+        if (st.BeforeText != null && st.AfterText != null
+            && edit is { } e3 && e3.NewText != null && st.AfterText == e3.NewText
+            && e3.Caret is int caret3 && caret3 != st.AfterCaret)
+        {
+            st.AfterCaret = caret3;
+        }
     }
 
     /// <summary>

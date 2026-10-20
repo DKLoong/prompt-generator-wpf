@@ -1814,6 +1814,32 @@ public partial class MainWindow : Window
         PairCompletion.Attach(ta);
         ta.PreviewKeyDown += (_, e) =>
         {
+            // Ctrl+Z：IME 符号替换选中文本（包裹/补右/跳过/替换）产生多个撤销单元，且 WPF Undo 不恢复选区。
+            // ① 符号操作后未做任何操作（文本与光标匹配输入后快照）→ 循环 Undo 到输入前原文 + 手动 Select 恢复选中；
+            // ② 已恢复到"原文+原选区选中"（上次整体回退已完成）→ 循环跳过 WPF 的"选区/光标"撤销单元，
+            //    按输入粒度继续撤销原文输入（"东大"一次输入则一次变空，多次输入则逐次回退）。
+            if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control
+                && PairCompletion.TryGetLastSymbolEditState(ta,
+                    out string beforeText, out int beforeStart, out int beforeLen,
+                    out string afterText, out int afterCaret))
+            {
+                if (ta.Text == afterText && ta.SelectionStart == afterCaret && ta.SelectionLength == 0)
+                {
+                    e.Handled = true;
+                    int guard = 0;
+                    while (ta.CanUndo && ta.Text != beforeText && guard++ < 20) ta.Undo();
+                    if (ta.Text != beforeText) ta.Text = beforeText;   // 撤销栈无法还原原文（IME 不记录/已清栈）时兜底写回
+                    ta.Select(beforeStart, beforeLen);
+                    return;
+                }
+                if (ta.Text == beforeText && ta.SelectionStart == beforeStart && ta.SelectionLength == beforeLen)
+                {
+                    e.Handled = true;
+                    int g2 = 0;
+                    while (ta.CanUndo && ta.Text == beforeText && g2++ < 20) ta.Undo();
+                    return;
+                }
+            }
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
             {
                 // 空框内按 Enter 不做任何操作：避免连续产生多个空框，
