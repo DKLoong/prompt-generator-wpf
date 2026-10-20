@@ -1607,6 +1607,7 @@ public partial class MainWindow : Window
             Text = field.Name
         };
         WatermarkService.SetWatermark(nameBox, "标题，如“要求”");
+        PairCompletion.Attach(nameBox);
         nameBox.TextChanged += (_, _) =>
         {
             field.Name = nameBox.Text;
@@ -1717,6 +1718,7 @@ public partial class MainWindow : Window
         ta.Padding = new Thickness(4, 3, 4, 3);
         ta.HorizontalAlignment = HorizontalAlignment.Stretch;
         WatermarkService.SetWatermark(ta, "正文，回车加条，Shift+Enter换行");
+        PairCompletion.Attach(ta);
         ta.PreviewKeyDown += (_, e) =>
         {
             if (e.Key == Key.Enter && Keyboard.Modifiers == ModifierKeys.None)
