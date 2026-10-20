@@ -1491,7 +1491,10 @@ public partial class MainWindow : Window
         gap.AddClicked += (_, _) =>
         {
             if (_current == null) return;
-            AddFieldAt(insertIndex);
+            // 以 RowGap 在 FieldHost.Children 中的实时位置推导插入点（间隙位于奇数索引 2i+1 → 在字段 i 后插入 → i+1），
+            // 不依赖创建时捕获的 insertIndex：删除字段后该值会过时（> Fields.Count 时 List.Insert 抛 ArgumentOutOfRangeException）。
+            int idx = FieldHost.Children.IndexOf(gap);
+            AddFieldAt(idx >= 0 ? (idx + 1) / 2 : insertIndex);
         };
         return gap;
     }
