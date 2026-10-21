@@ -37,6 +37,19 @@ public partial class App : Application
     /// <summary>ToolTip 统一摆放回调：按钮下方、水平居中、距按钮外边 2px。</summary>
     public static readonly CustomPopupPlacementCallback ToolTipPlacementCallback = ToolTipPlacement;
 
+    /// <summary>确认弹层（popconfirm）放置回调：首选按钮下方左对齐，其次上方左对齐、
+    /// 下方/上方右对齐——WPF 自动选择第一个能完整落入屏幕的位置（窗口贴屏幕边缘时完整显示）。</summary>
+    public static readonly CustomPopupPlacementCallback ConfirmPopupPlacement = ConfirmPlacement;
+
+    private static CustomPopupPlacement[] ConfirmPlacement(Size popupSize, Size targetSize, Point offset)
+        => new[]
+        {
+            new CustomPopupPlacement(new Point(0, targetSize.Height + 4), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(0, -popupSize.Height - 4), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height + 4), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, -popupSize.Height - 4), PopupPrimaryAxis.Horizontal),
+        };
+
     private static CustomPopupPlacement[] ToolTipPlacement(Size popupSize, Size targetSize, Point offset)
         => new[]
         {

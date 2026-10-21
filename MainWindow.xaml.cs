@@ -1367,59 +1367,120 @@ public partial class MainWindow : Window
     private void DeleteTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
-        var r = MessageBox.Show($"删除模板「{_current.Name}」？", "删除模板",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (r != MessageBoxResult.Yes) return;
+        ShowConfirm(sender as FrameworkElement, "删除模板", $"删除模板「{_current.Name}」？", DeleteTemplateConfirmed, byKeyboard: false);
+    }
+
+    private void DeleteTemplateConfirmed()
+    {
+        if (_current == null) return;
         // 保存本地引用：_data.Templates.Remove 会同步触发 SelectionChanged → LoadCurrentTemplate
         // → 把 _current 置 null，后面再访问 _current.Id 会 NRE。
         var current = _current;
+        var copy = DeepCopy(current);
+        int index = _data.Templates.IndexOf(current);
+        var snapshot = _savedSnapshots.TryGetValue(current.Id, out var s) ? DeepCopy(s) : null;
+        bool wasPendingNew = _pendingNewTemplate == current;
+        string id = current.Id;
+        string name = current.Name;
+
         _data.Templates.Remove(current);
-        _savedSnapshots.Remove(current.Id);
-        if (_pendingNewTemplate == current) _pendingNewTemplate = null;   // 未保存的新模板被删除
+        _savedSnapshots.Remove(id);
+        if (wasPendingNew) _pendingNewTemplate = null;   // 未保存的新模板被删除
         _current = null;
         try { _store.Save(_data); }
         catch (Exception ex) { Logging.Warn($"删除模板落盘失败：{ex.Message}"); }
         RefreshTemplateBox();
         TemplateBox.Focus();
-        Logging.Info($"删除模板：{current.Name}");
-        ShowToast("已删除模板");
+        Logging.Info($"删除模板：{name}");
+        ShowToast($"已删除「{name}」", true, () =>
+        {
+            // 撤销删除：原位置插回 + 恢复快照 + 重建视图并选中该模板
+            var t = copy;
+            _data.Templates.Insert(Math.Min(index, _data.Templates.Count), t);
+            if (snapshot != null) _savedSnapshots[id] = snapshot;
+            if (wasPendingNew) _pendingNewTemplate = t;
+            try { _store.Save(_data); }
+            catch (Exception ex) { Logging.Warn($"撤销删除落盘失败：{ex.Message}"); }
+            _loadingTemplates = true;
+            _filterActive = false;
+            _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+            _templatesView.Filter = null;
+            TemplateBox.ItemsSource = _templatesView;
+            TemplateBox.SelectedItem = t;
+            TemplateBox.Text = t.Name;
+            _loadingTemplates = false;
+            _current = t;
+            RenderFields();
+            UpdateTemplateBoxVisual();
+            Logging.Info($"撤销删除：{name}");
+            ShowToast("已撤销删除");
+        });
     }
 
     private void ResetTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
-        var r = MessageBox.Show($"将模板「{_current.Name}」恢复到上一次保存的状态？", "重置模板",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (r != MessageBoxResult.Yes) return;
+        ShowConfirm(sender as FrameworkElement, "重置模板", $"将模板「{_current.Name}」恢复到上一次保存的状态？", ResetTemplateConfirmed, byKeyboard: false);
+    }
+
+    private void ResetTemplateConfirmed()
+    {
+        if (_current == null) return;
+        var target = _current;
+        string targetId = target.Id;
 
         // 重置 = 恢复到上一次保存的状态（快照），适用于所有已保存的模板（含预置模板，不区分出厂/自建）
-        if (!_savedSnapshots.TryGetValue(_current.Id, out var snap))
+        if (!_savedSnapshots.TryGetValue(targetId, out var snap))
         {
             ShowToast("该模板尚未保存过，无可重置的状态", false);
             return;
         }
+        var before = DeepCopy(target);
 
         // 退出改名/过滤态，防止 ComboBox 一致性回写干扰（点击按钮前 LostFocus 已先行处理，此处兜底）
         _renaming = false;
         _filterActive = false;
         _userTyping = false;
 
-        _current.Name = snap.Name;
-        _current.Fields.Clear();
+        target.Name = snap.Name;
+        target.Fields.Clear();
         foreach (var f in snap.Fields)
-            _current.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
+            target.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
 
         // 无需 SaveSnapshot / 落盘：快照即磁盘内容，重置只是把内存恢复到该状态，写盘内容与磁盘现状相同（冗余）
 
         _loadingTemplates = true;
-        TemplateBox.Text = _current.Name;
-        if (TemplateBox.SelectedItem != _current) TemplateBox.SelectedItem = _current;
+        TemplateBox.Text = target.Name;
+        if (TemplateBox.SelectedItem != target) TemplateBox.SelectedItem = target;
         _loadingTemplates = false;
         RefreshFilteredList();
         RenderFields();
         UpdateTemplateBoxVisual();
-        Logging.Info($"重置模板：{_current.Name}");
-        ShowToast("已恢复到上次保存状态");
+        Logging.Info($"重置模板：{target.Name}");
+        ShowToast("已恢复到上次保存状态", true, () =>
+        {
+            // 撤销重置：恢复重置前内存态（重置/撤销均不落盘，纯内存态）。
+            // 3 秒内若已切换模板则不做（避免动错对象），提示后丢弃。
+            if (_current?.Id != targetId)
+            {
+                ShowToast("已切换模板，撤销重置已跳过", false);
+                return;
+            }
+            var t = before;
+            _current.Name = t.Name;
+            _current.Fields.Clear();
+            foreach (var f in t.Fields)
+                _current.Fields.Add(new Field { Name = f.Name, Items = new List<string>(f.Items) });
+            _loadingTemplates = true;
+            TemplateBox.Text = _current.Name;
+            if (TemplateBox.SelectedItem != _current) TemplateBox.SelectedItem = _current;
+            _loadingTemplates = false;
+            RefreshFilteredList();
+            RenderFields();
+            UpdateTemplateBoxVisual();
+            Logging.Info($"撤销重置：{t.Name}");
+            ShowToast("已撤销重置");
+        });
     }
 
     private void SaveTemplate_Click(object sender, RoutedEventArgs e)
@@ -2315,11 +2376,12 @@ public partial class MainWindow : Window
                 return;
             }
         }
-        // Ctrl+R：重置当前模板（与"重置模板"按钮一致，含确认弹窗）
+        // Ctrl+R：重置当前模板（与"重置模板"按钮一致，含确认弹窗；锚点为重置按钮，键盘入口默认聚焦确认显示柔和红）
         if (e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control)
         {
             e.Handled = true;
-            ResetTemplate_Click(this, new RoutedEventArgs());
+            if (_current == null) return;
+            ShowConfirm(ResetBtn, "重置模板", $"将模板「{_current.Name}」恢复到上一次保存的状态？", ResetTemplateConfirmed, byKeyboard: true);
             return;
         }
         // 改名态：拦截所有"打开列表"的入口（箭头已拦，F4/Alt+Down 一并拦），提示先退出编辑
@@ -2851,20 +2913,122 @@ public partial class MainWindow : Window
 
     private DispatcherTimer? _toastTimer;
 
-    private void ShowToast(string msg, bool ok = true)
+    /// <summary>待撤销操作（popconfirm 确认后 3 秒内有效）；点击撤销按钮执行，超时置空。</summary>
+    private Action? _undoAction;
+    /// <summary>确认弹层当前待执行动作（删除/重置）；确认时执行并清空，取消/点外部关闭时清空。</summary>
+    private Action? _confirmAction;
+    /// <summary>弹窗打开入口是否键盘（Ctrl+R）：键盘入口时默认聚焦确认按钮显示柔和红；鼠标入口时不显示（仅 hover 高亮）。</summary>
+    private bool _suppressConfirmFocusBrush;
+    /// <summary>本次确认是否键盘触发（Enter）：键盘确认后焦点移"撤销"按钮；鼠标确认不移焦（不聚焦高亮撤销按钮）。</summary>
+    private bool _confirmByKeyboard;
+
+    private void ShowToast(string msg, bool ok = true) => ShowToast(msg, ok, null);
+
+    /// <summary>显示 3 秒轻提示。带 <paramref name="undoAction"/> 时显示"撤销"按钮并允许点击（toast 层此时可命中），
+    /// 点击撤销立即隐藏并执行；否则不挡点击（IsHitTestVisible=False）。</summary>
+    private void ShowToast(string msg, bool ok, Action? undoAction)
     {
         Toast.Text = msg;
         Toast.Foreground = ok
             ? (Brush)FindResource("OkBrush")
             : (Brush)FindResource("DangerBrush");
+        _undoAction = undoAction;
+        UndoBtn.Visibility = undoAction != null ? Visibility.Visible : Visibility.Collapsed;
+        ToastLayer.IsHitTestVisible = undoAction != null;
         ToastLayer.Visibility = Visibility.Visible;
         _toastTimer?.Stop();
         _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
         _toastTimer.Tick += (_, _) =>
         {
             ToastLayer.Visibility = Visibility.Collapsed;
+            UndoBtn.Visibility = Visibility.Collapsed;
+            ToastLayer.IsHitTestVisible = false;
+            _undoAction = null;
             _toastTimer!.Stop();
         };
         _toastTimer.Start();
+    }
+
+    private void UndoBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var action = _undoAction;
+        ToastLayer.Visibility = Visibility.Collapsed;
+        UndoBtn.Visibility = Visibility.Collapsed;
+        ToastLayer.IsHitTestVisible = false;
+        _toastTimer?.Stop();
+        _undoAction = null;
+        action?.Invoke();
+    }
+
+    // ---------------- 确认弹层（popconfirm） ----------------
+
+    /// <summary>以 <paramref name="anchor"/> 为锚点打开确认弹层；<paramref name="byKeyboard"/> 为 true 时
+    /// （Ctrl+R 键盘入口）默认聚焦确认按钮并显示柔和红，否则（鼠标入口）聚焦但不显示红底（仅 hover 高亮）。</summary>
+    private void ShowConfirm(FrameworkElement? anchor, string title, string message, Action confirm, bool byKeyboard)
+    {
+        ConfirmTitle.Text = title;
+        ConfirmMsg.Text = message;
+        _confirmAction = confirm;
+        _suppressConfirmFocusBrush = !byKeyboard;
+        ConfirmPopup.PlacementTarget = anchor ?? this;
+        ConfirmPopup.IsOpen = true;
+    }
+
+    private void ConfirmPopup_Opened(object? sender, EventArgs e)
+    {
+        // Popup 完成打开后才可聚焦内容，确保 Enter=确认、Tab 切到取消后 Enter=取消
+        Dispatcher.BeginInvoke(() => ConfirmOk.Focus(), DispatcherPriority.Loaded);
+    }
+
+    private void ConfirmOk_Click(object sender, RoutedEventArgs e)
+    {
+        ConfirmPopup.IsOpen = false;
+        var action = _confirmAction;
+        _confirmAction = null;
+        bool byKeyboard = _confirmByKeyboard;
+        _confirmByKeyboard = false;
+        action?.Invoke();
+        // 仅键盘确认（Enter）后移焦到"撤销"按钮（键盘聚焦淡紫高亮）；鼠标确认不移焦（焦点回锚点按钮）
+        if (byKeyboard && UndoBtn.Visibility == Visibility.Visible) UndoBtn.Focus();
+    }
+
+    /// <summary>确认按钮键盘聚焦视觉：仅程序化（键盘入口）/键盘导航聚焦显示柔和红；鼠标点击聚焦（IsMouseOver）不显示。</summary>
+    private void ConfirmOk_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is not Button b || b.IsMouseOver) return;
+        if (_suppressConfirmFocusBrush) { _suppressConfirmFocusBrush = false; return; }
+        b.Background = (Brush)FindResource("ConfirmBrush");
+    }
+
+    private void ConfirmOk_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is not Button b) return;
+        b.ClearValue(Button.BackgroundProperty);
+    }
+
+    private void ConfirmCancel_Click(object sender, RoutedEventArgs e)
+    {
+        ConfirmPopup.IsOpen = false;
+        _confirmAction = null;
+    }
+
+    private void ConfirmPopup_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            ConfirmCancel_Click(sender, new RoutedEventArgs());
+        }
+        else if (e.Key == Key.Enter)
+        {
+            e.Handled = true;
+            if (ConfirmCancel.IsKeyboardFocused)
+                ConfirmCancel_Click(sender, new RoutedEventArgs());
+            else
+            {
+                _confirmByKeyboard = true;
+                ConfirmOk_Click(sender, new RoutedEventArgs());
+            }
+        }
     }
 }
