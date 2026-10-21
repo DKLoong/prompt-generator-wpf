@@ -151,7 +151,7 @@
                                         </StackPanel>
                                     </Grid>
                                     <TextBox Text="{Binding Prompt}"
-                                             Foreground="{DynamicResource TextBrush}" FontSize="16"
+                                             Foreground="{DynamicResource TextBrush}" FontSize="14"
                                              TextWrapping="Wrap" IsReadOnly="True" IsTabStop="False"
                                              Background="Transparent" BorderThickness="0"
                                              Padding="0" Cursor="IBeam"
