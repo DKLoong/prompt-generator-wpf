@@ -25,11 +25,39 @@ public partial class HistoryWindow : Window
         RefreshList();
     }
 
+    /// <summary>按时间倒序刷新列表；搜索框有非空关键字时，仅保留标题（TemplateName）或内容（Prompt）
+    /// 包含关键字的历史条目（字符串包含匹配，忽略大小写）。空关键字显示全部。</summary>
     private void RefreshList()
     {
+        string keyword = SearchBox.Text?.Trim() ?? "";
+        IEnumerable<HistoryEntry> query = _history.OrderByDescending(h => h.Timestamp);
+        if (keyword.Length > 0)
+            query = query.Where(h =>
+                (h.TemplateName?.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) ?? -1) >= 0
+                || (h.Prompt?.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) ?? -1) >= 0);
         HistoryList.ItemsSource = null;
-        HistoryList.ItemsSource = _history.OrderByDescending(h => h.Timestamp).ToList();
+        HistoryList.ItemsSource = query.ToList();
     }
+
+    /// <summary>搜索框实时过滤历史条目（无防抖，逐字符刷新；历史量 ≤50，开销可忽略）。
+    /// 占位提示：聚焦/输入时隐藏，失焦且文本为空时显示。</summary>
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        SearchWatermark.Visibility = SearchBox.IsKeyboardFocusWithin
+            ? Visibility.Collapsed
+            : (string.IsNullOrEmpty(SearchBox.Text) ? Visibility.Visible : Visibility.Collapsed);
+        RefreshList();
+    }
+
+    /// <summary>光标插入搜索框：占位提示隐藏。</summary>
+    private void SearchBox_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        => SearchWatermark.Visibility = Visibility.Collapsed;
+
+    /// <summary>光标离开搜索框：文本为空时恢复占位提示。</summary>
+    private void SearchBox_LostKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+        => SearchWatermark.Visibility = string.IsNullOrEmpty(SearchBox.Text)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
@@ -62,7 +90,21 @@ public partial class HistoryWindow : Window
     private void WindowDrag_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+        {
+            // 搜索框内按下不拖拽窗口：保留文本框光标定位/选中/拖选（标题文字区域仍可拖拽）
+            if (e.OriginalSource is DependencyObject src && IsWithinElement(src, SearchBox)) return;
+            // 点击搜索框外的标题栏区域：搜索框失去键盘焦点（标题栏非焦点目标，点击默认不抢焦点需手动清焦）
+            if (SearchBox.IsKeyboardFocusWithin) System.Windows.Input.Keyboard.ClearFocus();
             DragMove();
+        }
+    }
+
+    /// <summary>命中测试：元素（或其祖先）是否为指定目标元素。</summary>
+    private static bool IsWithinElement(DependencyObject? node, DependencyObject target)
+    {
+        for (DependencyObject? d = node; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d == target) return true;
+        return false;
     }
 
     private void CopyBtn_Click(object sender, RoutedEventArgs e)
