@@ -1267,8 +1267,9 @@ public partial class MainWindow : Window
         return false;
     }
 
-    /// <summary>确认改名：非空、不重名才写回并退出改名态；空名还原退出；重名提示并保持改名态。</summary>
-    private bool TryConfirmRename()
+    /// <summary>确认改名：非空、不重名才写回并退出改名态；空名还原退出；重名提示并保持改名态。
+    /// <paramref name="byKeyboard"/>：Enter 键盘确认时，改名成功后移焦"撤销"按钮并设置 toast 消失回焦重命名按钮。</summary>
+    private bool TryConfirmRename(bool byKeyboard = false)
     {
         if (!_renaming) return false;
         string newName = TemplateBox.Text.Trim();
@@ -1288,6 +1289,8 @@ public partial class MainWindow : Window
         }
         if (_current != null && _current.Name != newName)
         {
+            string oldName = _current.Name;
+            string targetId = _current.Id;
             _current.Name = newName;
             // 重命名 Enter 只保存模板名称：仅更新快照的名称、保留快照原有字段（最近一次显式保存的内容），
             // 使 PersistData 只把新名称落盘、不把未保存的内容编辑一并写盘（收窄"保存整个模板"为"仅保存名称"）。
@@ -1297,6 +1300,34 @@ public partial class MainWindow : Window
                 SaveSnapshot(_current);
             try { PersistData(); }
             catch (Exception ex) { Logging.Warn($"模板改名落盘失败：{ex.Message}"); }
+            Logging.Info($"重命名模板：{oldName} → {newName}");
+            // 3 秒带撤销的 toast（风格与删除/重置一致，无需 popconfirm）：点击撤销恢复原名
+            ShowToast($"已重命名为「{newName}」", true, () =>
+            {
+                // 撤销重命名：恢复原名（3 秒内已切换模板则跳过，避免动错对象）
+                if (_current?.Id != targetId)
+                {
+                    ShowToast("已切换模板，撤销重命名已跳过", false);
+                    return;
+                }
+                _current.Name = oldName;
+                if (_savedSnapshots.TryGetValue(targetId, out var snapR)) snapR.Name = oldName;
+                try { PersistData(); }
+                catch (Exception ex) { Logging.Warn($"撤销改名落盘失败：{ex.Message}"); }
+                _loadingTemplates = true;
+                TemplateBox.Text = oldName;
+                if (TemplateBox.SelectedItem != _current) TemplateBox.SelectedItem = _current;
+                _loadingTemplates = false;
+                UpdateTemplateBoxVisual();
+                Logging.Info($"撤销重命名：{oldName}");
+                ShowToast("已撤销重命名");
+            });
+            // Enter 键盘确认：移焦"撤销"按钮（类级 handler 自动高亮+tooltip），toast 消失后回焦重命名按钮
+            if (byKeyboard)
+            {
+                _toastReturnFocus = RenameBtn;
+                UndoBtn.Focus();
+            }
         }
         _renaming = false;
         // 改名输入可能已使选中项与文本脱节：恢复选中指向当前模板，保证下拉展开显示正常
@@ -1367,7 +1398,10 @@ public partial class MainWindow : Window
     private void DeleteTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
-        ShowConfirm(sender as FrameworkElement, "删除模板", $"删除模板「{_current.Name}」？", DeleteTemplateConfirmed, byKeyboard: false);
+        // 键盘触发（Tab 聚焦+Enter/Space）时鼠标不在按钮上（IsMouseOver=false）：走键盘路径（确认红/移焦撤销/回焦删除按钮）；
+        // 鼠标点击（IsMouseOver=true）：走鼠标路径（仅 hover 高亮、不移焦）
+        bool byKeyboard = !(sender is Button b && b.IsMouseOver);
+        ShowConfirm(sender as FrameworkElement, "删除模板", $"删除模板「{_current.Name}」？", DeleteTemplateConfirmed, byKeyboard);
     }
 
     private void DeleteTemplateConfirmed()
@@ -1420,7 +1454,10 @@ public partial class MainWindow : Window
     private void ResetTemplate_Click(object sender, RoutedEventArgs e)
     {
         if (_current == null) return;
-        ShowConfirm(sender as FrameworkElement, "重置模板", $"将模板「{_current.Name}」恢复到上一次保存的状态？", ResetTemplateConfirmed, byKeyboard: false);
+        // 键盘触发（Tab 聚焦+Enter/Space）时鼠标不在按钮上（IsMouseOver=false）：走键盘路径（确认红/移焦撤销/回焦重置按钮）；
+        // 鼠标点击（IsMouseOver=true）：走鼠标路径（仅 hover 高亮、不移焦）
+        bool byKeyboard = !(sender is Button b && b.IsMouseOver);
+        ShowConfirm(sender as FrameworkElement, "重置模板", $"将模板「{_current.Name}」恢复到上一次保存的状态？", ResetTemplateConfirmed, byKeyboard);
     }
 
     private void ResetTemplateConfirmed()
@@ -2500,7 +2537,10 @@ public partial class MainWindow : Window
             if (_renaming)
             {
                 e.Handled = true;
-                if (TryConfirmRename()) FocusFieldName(0);   // 改名确认后进入该模板第一个字段框
+                // Enter 键盘确认：成功后移焦撤销按钮、toast 消失回焦重命名按钮；
+                // 有撤销 toast（成功改名）时不 FocusFieldName——焦点已移撤销按钮；空名还原等无撤销场景维持原逻辑
+                if (TryConfirmRename(byKeyboard: true) && UndoBtn.Visibility != Visibility.Visible)
+                    FocusFieldName(0);
                 return;   // 重名时留在改名态
             }
             if (IsDisplayMode() && !TemplateBox.IsDropDownOpen)
@@ -2915,8 +2955,13 @@ public partial class MainWindow : Window
 
     /// <summary>待撤销操作（popconfirm 确认后 3 秒内有效）；点击撤销按钮执行，超时置空。</summary>
     private Action? _undoAction;
+    /// <summary>toast 消失后回焦的按钮（键盘路径设置：重命名→重命名按钮、删除/重置→对应操作按钮）；
+    /// 鼠标路径为 null，toast 消失自然失焦。回焦时类级 OnButtonGotKeyboardFocus 自动显示 tooltip+聚焦高亮。</summary>
+    private Button? _toastReturnFocus;
     /// <summary>确认弹层当前待执行动作（删除/重置）；确认时执行并清空，取消/点外部关闭时清空。</summary>
     private Action? _confirmAction;
+    /// <summary>确认弹层键盘确认后回焦的按钮（由锚点推导：删除→删除按钮、重置→重置按钮）。</summary>
+    private Button? _confirmReturnFocus;
     /// <summary>弹窗打开入口是否键盘（Ctrl+R）：键盘入口时默认聚焦确认按钮显示柔和红；鼠标入口时不显示（仅 hover 高亮）。</summary>
     private bool _suppressConfirmFocusBrush;
     /// <summary>本次确认是否键盘触发（Enter）：键盘确认后焦点移"撤销"按钮；鼠标确认不移焦（不聚焦高亮撤销按钮）。</summary>
@@ -2944,6 +2989,10 @@ public partial class MainWindow : Window
             UndoBtn.Visibility = Visibility.Collapsed;
             ToastLayer.IsHitTestVisible = false;
             _undoAction = null;
+            // 键盘路径：toast 消失后焦点回来源按钮（类级 handler 自动显示 tooltip+聚焦高亮）；鼠标路径为 null 自然失焦
+            var returnTo = _toastReturnFocus;
+            _toastReturnFocus = null;
+            if (returnTo != null) returnTo.Focus();
             _toastTimer!.Stop();
         };
         _toastTimer.Start();
@@ -2958,6 +3007,15 @@ public partial class MainWindow : Window
         _toastTimer?.Stop();
         _undoAction = null;
         action?.Invoke();
+        // 键盘撤销（Tab 聚焦+Enter/Space 触发，IsMouseOver=false）：立即回焦来源按钮（与撤销成功 toast 同步，不等 toast 消失）；
+        // 鼠标点击撤销不回焦（焦点自然回到点击前位置）
+        bool byKeyboard = !(sender is Button b && b.IsMouseOver);
+        if (byKeyboard)
+        {
+            var returnTo = _toastReturnFocus;
+            _toastReturnFocus = null;
+            if (returnTo != null) returnTo.Focus();   // 类级 handler 自动显示 tooltip+聚焦高亮
+        }
     }
 
     // ---------------- 确认弹层（popconfirm） ----------------
@@ -2969,6 +3027,7 @@ public partial class MainWindow : Window
         ConfirmTitle.Text = title;
         ConfirmMsg.Text = message;
         _confirmAction = confirm;
+        _confirmReturnFocus = anchor as Button;   // 键盘确认后 toast 消失回焦的按钮（删除→删除按钮、重置→重置按钮）
         _suppressConfirmFocusBrush = !byKeyboard;
         ConfirmPopup.PlacementTarget = anchor ?? this;
         ConfirmPopup.IsOpen = true;
@@ -2988,8 +3047,13 @@ public partial class MainWindow : Window
         bool byKeyboard = _confirmByKeyboard;
         _confirmByKeyboard = false;
         action?.Invoke();
-        // 仅键盘确认（Enter）后移焦到"撤销"按钮（键盘聚焦淡紫高亮）；鼠标确认不移焦（焦点回锚点按钮）
-        if (byKeyboard && UndoBtn.Visibility == Visibility.Visible) UndoBtn.Focus();
+        // 仅键盘确认（Enter）：移焦到"撤销"按钮（键盘聚焦淡紫高亮+tooltip），toast 消失后回焦来源按钮；
+        // 鼠标确认不移焦（焦点回锚点按钮）
+        if (byKeyboard)
+        {
+            _toastReturnFocus = _confirmReturnFocus;
+            if (UndoBtn.Visibility == Visibility.Visible) UndoBtn.Focus();
+        }
     }
 
     /// <summary>确认按钮键盘聚焦视觉：仅程序化（键盘入口）/键盘导航聚焦显示柔和红；鼠标点击聚焦（IsMouseOver）不显示。</summary>
@@ -3010,6 +3074,13 @@ public partial class MainWindow : Window
     {
         ConfirmPopup.IsOpen = false;
         _confirmAction = null;
+        _confirmByKeyboard = false;
+        // 键盘取消（Esc，或 Tab 到取消后 Enter：sender 均为 ConfirmPopup）后焦点回锚点按钮（重置/删除）；
+        // 鼠标点击取消（IsMouseOver=true）不回焦
+        bool byKeyboard = !(sender is Button b && b.IsMouseOver);
+        var returnTo = byKeyboard ? _confirmReturnFocus : null;
+        _confirmReturnFocus = null;
+        if (returnTo != null) returnTo.Focus();   // 类级 handler 自动显示 tooltip+聚焦高亮
     }
 
     private void ConfirmPopup_PreviewKeyDown(object sender, KeyEventArgs e)

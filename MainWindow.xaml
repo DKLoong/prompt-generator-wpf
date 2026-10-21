@@ -151,7 +151,7 @@
                           LostKeyboardFocus="TemplateBox_LostKeyboardFocus"
                           VerticalContentAlignment="Center" />
                 <!-- 模板操作：重命名 / 新增 / 保存 / 重置 / 删除（图标按钮，ToolTip 提示语义，保存含 Ctrl+S 快捷键） -->
-                <Button Grid.Column="1" Style="{StaticResource IconActionBtn}" Margin="0,0,4,0"
+                <Button x:Name="RenameBtn" Grid.Column="1" Style="{StaticResource IconActionBtn}" Margin="0,0,4,0"
                         ToolTip="重命名模板" Click="RenameTemplate_Click">
                     <Viewbox Width="14" Height="14" Stretch="Uniform">
                         <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
