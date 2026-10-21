@@ -18,6 +18,18 @@ public static class WatermarkService
     public static string GetWatermark(DependencyObject obj) => (string)obj.GetValue(WatermarkProperty);
     public static void SetWatermark(DependencyObject obj, string value) => obj.SetValue(WatermarkProperty, value);
 
+    /// <summary>占位符起点 X 偏移（分框校准）：各输入框文本渲染起点不同（单行/多行偏移机制不一致），
+    /// 不能用一个全局值对齐所有框，须按框实测校准后分别设置。</summary>
+    public static readonly DependencyProperty WatermarkOffsetXProperty =
+        DependencyProperty.RegisterAttached(
+            "WatermarkOffsetX",
+            typeof(double),
+            typeof(WatermarkService),
+            new PropertyMetadata(15.0));
+
+    public static double GetWatermarkOffsetX(DependencyObject obj) => (double)obj.GetValue(WatermarkOffsetXProperty);
+    public static void SetWatermarkOffsetX(DependencyObject obj, double value) => obj.SetValue(WatermarkOffsetXProperty, value);
+
     private static void OnWatermarkChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not TextBox tb) return;
@@ -67,9 +79,8 @@ public static class WatermarkService
                 // 每次渲染取当前主题 FaintBrush（占位符为置灰提示档），主题切换后重绘即跟随
                 _ft.SetForegroundBrush((Brush)Application.Current.FindResource("FaintBrush"));
                 double top = (_tb.ActualHeight - _ft.Height) / 2;
-                // 与输入内容左边距统一：内容起点实测恒为 22 物理px（200% DPI 下 11 DIP），
-                // 不跟随 Padding（Wrap/NoWrap 下 Padding 偏移机制不一致），固定值保证两框提示语与内容完全对齐
-                dc.DrawText(_ft, new Point(11, Math.Max(0, top)));
+                // 占位符起点 = 该框的校准值（WatermarkOffsetX，分框设置），保证提示语与输入内容起点对齐
+                dc.DrawText(_ft, new Point(GetWatermarkOffsetX(_tb), Math.Max(0, top)));
             }
         }
     }

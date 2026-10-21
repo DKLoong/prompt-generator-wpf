@@ -1706,10 +1706,10 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Top,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
-            FontSize = 15,
+            FontSize = 16,
             FontWeight = FontWeights.Bold,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(4, 0, 4, 0),
+            Padding = new Thickness(8, 0, 8, 0),
             Text = field.Name
         };
         // 强调色动态引用：主题切换时字段名/光标/选中色自动跟随
@@ -1717,6 +1717,7 @@ public partial class MainWindow : Window
         nameBox.SetResourceReference(TextBoxBase.CaretBrushProperty, "AccentBrush");
         nameBox.SetResourceReference(TextBoxBase.SelectionBrushProperty, "AccentBrush");
         WatermarkService.SetWatermark(nameBox, "标题，如“要求”");
+        WatermarkService.SetWatermarkOffsetX(nameBox, 10);
         PairCompletion.Attach(nameBox);
         nameBox.TextChanged += (_, _) =>
         {
@@ -1830,7 +1831,7 @@ public partial class MainWindow : Window
         {
             Text = (itemIndex + 1) + ".",
             FontWeight = FontWeights.SemiBold,
-            FontSize = 13,
+            FontSize = 14,
             VerticalAlignment = VerticalAlignment.Center,
             TextAlignment = TextAlignment.Right
         };
@@ -1912,9 +1913,11 @@ public partial class MainWindow : Window
 
         var ta = new AutoGrowTextBox { Text = field.Items[itemIndex] };
         ta.Style = FindFieldInputStyle();
-        ta.Padding = new Thickness(4, 3, 4, 3);
+        ta.FontSize = 14;
+        ta.Padding = new Thickness(4, 4, 4, 4);
         ta.HorizontalAlignment = HorizontalAlignment.Stretch;
         WatermarkService.SetWatermark(ta, "正文，回车加条，Shift+Enter换行");
+        WatermarkService.SetWatermarkOffsetX(ta, 14);
         PairCompletion.Attach(ta);
         DataObject.AddPastingHandler(ta, OnContentPaste);
         ta.PreviewKeyDown += (_, e) =>

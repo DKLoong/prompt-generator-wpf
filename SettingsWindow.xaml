@@ -1,12 +1,12 @@
 <Window x:Class="PromptGenerator.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="设置" Width="360" Height="470"
+        Title="设置" Width="400" Height="520"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         PreviewKeyDown="SettingsWindow_PreviewKeyDown"
         MouseLeftButtonDown="SettingsWindow_MouseLeftButtonDown">
-    <Border Background="{DynamicResource PanelBrush}" CornerRadius="10"
+    <Border Background="{DynamicResource PanelBrush}" CornerRadius="8"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <Grid Margin="16">
             <Grid.RowDefinitions>
@@ -18,59 +18,59 @@
             <!-- 标题栏 -->
             <Grid Grid.Row="0" Margin="0,0,0,12">
                 <TextBlock Text="设置" Foreground="{DynamicResource TextBrush}"
-                           FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <Button Content="✕" Width="26" Height="26" HorizontalAlignment="Right"
+                           FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button Content="✕" Width="28" Height="28" HorizontalAlignment="Right"
                         Style="{StaticResource IconBtn}" Click="CancelBtn_Click" ToolTip="关闭"/>
             </Grid>
 
             <!-- 内容 -->
             <StackPanel Grid.Row="1">
-                <TextBlock Text="全局显示/隐藏热键" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                <TextBlock Text="全局显示/隐藏热键" Foreground="{DynamicResource TextBrush}" FontSize="14"/>
                 <TextBox x:Name="HotkeyBox" Margin="0,8,0,0" Height="32" IsReadOnly="True"
-                         Style="{StaticResource FieldInput}" FontSize="13"
-                         Padding="8,0" VerticalContentAlignment="Center"
+                         Style="{StaticResource FieldInput}" FontSize="14"
+                         Padding="8,0,4,0" VerticalContentAlignment="Center"
                          PreviewKeyDown="HotkeyBox_PreviewKeyDown"
                          PreviewMouseLeftButtonDown="HotkeyBox_PreviewMouseLeftButtonDown"
                          GotFocus="HotkeyBox_GotFocus"/>
-                <TextBlock x:Name="CaptureHint" Margin="0,6,0,0" FontSize="11"
+                <TextBlock x:Name="CaptureHint" Margin="0,8,0,0" FontSize="12"
                            Foreground="{DynamicResource MutedBrush}"
                            Text="点击输入框后直接按下组合键（如 Ctrl+Alt+P），Esc 取消"/>
-                <TextBlock x:Name="ErrorTip" Margin="0,4,0,0" FontSize="11"
+                <TextBlock x:Name="ErrorTip" Margin="0,4,0,0" FontSize="12"
                            Foreground="{DynamicResource DangerBrush}" Visibility="Collapsed"
                            TextWrapping="Wrap"/>
 
-                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,14,0,12"/>
+                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,12"/>
 
-                <CheckBox x:Name="DockCheck" Foreground="{DynamicResource TextBrush}" FontSize="12"
+                <CheckBox x:Name="DockCheck" Foreground="{DynamicResource TextBrush}" FontSize="14"
                           Content="启用贴边收起" Checked="DockCheck_Changed" Unchecked="DockCheck_Changed"/>
-                <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                <TextBlock Margin="20,4,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}"
                            Text="窗口拖到屏幕边缘自动收起，悬停边缘条展开"/>
 
-                <CheckBox x:Name="PinRecentCheck" Margin="0,12,0,0" Foreground="{DynamicResource TextBrush}" FontSize="12"
+                <CheckBox x:Name="PinRecentCheck" Margin="0,12,0,0" Foreground="{DynamicResource TextBrush}" FontSize="14"
                           Content="最近使用置顶" Checked="PinRecentCheck_Changed" Unchecked="PinRecentCheck_Changed"/>
-                <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                <TextBlock Margin="20,4,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}"
                            Text="最近使用的 5 个模板自动排到下拉列表最前"/>
 
-                <CheckBox x:Name="PasteCleanupCheck" Margin="0,12,0,0" Foreground="{DynamicResource TextBrush}" FontSize="12"
+                <CheckBox x:Name="PasteCleanupCheck" Margin="0,12,0,0" Foreground="{DynamicResource TextBrush}" FontSize="14"
                           Content="粘贴自动清理" Checked="PasteCleanupCheck_Changed" Unchecked="PasteCleanupCheck_Changed"/>
-                <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                <TextBlock Margin="20,4,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}"
                            Text="粘贴到条目时去除首尾空行、统一换行符为 \n、清除行尾空白"/>
 
-                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,14,0,12"/>
+                <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,12"/>
 
-                <TextBlock Text="界面主题" Foreground="{DynamicResource TextBrush}" FontSize="12"/>
+                <TextBlock Text="界面主题" Foreground="{DynamicResource TextBrush}" FontSize="14"/>
                 <ComboBox x:Name="ThemeCombo" Margin="0,8,0,0" Height="28"
                           Style="{StaticResource RoundComboBox}">
                     <ComboBoxItem Content="冷灰·松绿"/>
                     <ComboBoxItem Content="暖灰·靛蓝"/>
                     <ComboBoxItem Content="石墨·低饱和紫"/>
                 </ComboBox>
-                <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource MutedBrush}"
+                <TextBlock Margin="0,4,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}"
                            Text="切换后立即生效，无需重启"/>
             </StackPanel>
 
             <!-- 底部按钮 -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
                 <Button Content="取消" Width="76" Height="32" Margin="0,0,8,0"
                         Style="{StaticResource ActionBtn}" Click="CancelBtn_Click"/>
                 <Button Content="保存" Width="76" Height="32"

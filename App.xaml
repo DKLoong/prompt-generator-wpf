@@ -65,7 +65,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="5" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -92,17 +92,17 @@
             <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontSize" Value="14" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
-            <Setter Property="Padding" Value="4,3,4,3" />
+            <Setter Property="Padding" Value="8,4,8,4" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TextBox">
                         <Border x:Name="bd" Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="5">
+                                CornerRadius="4">
                             <ScrollViewer x:Name="PART_ContentHost"
                                 Margin="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Padding}" />
                         </Border>
@@ -126,31 +126,31 @@
             <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontSize" Value="14" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
-                            <Border x:Name="bd" CornerRadius="5" Background="{TemplateBinding Background}"
+                            <Border x:Name="bd" CornerRadius="4" Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="26" />
+                                        <ColumnDefinition Width="28" />
                                     </Grid.ColumnDefinitions>
-                                    <ContentPresenter x:Name="contentPresenter" Margin="10,0,4,0"
+                                    <ContentPresenter x:Name="contentPresenter" Margin="8,0,4,0"
                                                       VerticalAlignment="Center"
                                                       Content="{TemplateBinding SelectionBoxItem}"
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                       ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                                       IsHitTestVisible="False" />
                                     <!-- 可编辑模式：宿主编辑文本框（名字必须是 PART_EditableTextBox） -->
-                                    <TextBox x:Name="PART_EditableTextBox" Margin="10,0,4,0"
+                                    <TextBox x:Name="PART_EditableTextBox" Margin="8,0,4,0"
                                              VerticalContentAlignment="Center"
                                              Background="Transparent" BorderThickness="0"
-                                             Foreground="{DynamicResource TextBrush}" FontSize="12"
+                                             Foreground="{DynamicResource MutedBrush}" FontSize="14"
                                              CaretBrush="{DynamicResource TextBrush}"
                                              SelectionBrush="{DynamicResource AccentBrush}"
                                              Visibility="Collapsed" IsReadOnly="False"
@@ -178,8 +178,8 @@
                             <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
                                 <Border Background="{DynamicResource Panel2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                        CornerRadius="5" MinWidth="{TemplateBinding ActualWidth}"
-                                        Margin="0,3,0,0" Padding="3">
+                                        CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}"
+                                        Margin="0,4,0,0" Padding="4">
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
                                         <ItemsPresenter />
                                     </ScrollViewer>
@@ -202,6 +202,11 @@
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Opacity" Value="0.5" />
                             </Trigger>
+                            <!-- 可编辑模式：显示态为次要文本色半粗（模板名）；聚焦输入时切回主文本色常重（编辑态），失焦还原 -->
+                            <Trigger SourceName="PART_EditableTextBox" Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="PART_EditableTextBox" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                <Setter TargetName="PART_EditableTextBox" Property="FontWeight" Value="Normal" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -211,8 +216,9 @@
         <!-- 下拉列表项：暗底浅字（与下拉框一致，保证可读性） -->
         <Style TargetType="ComboBoxItem">
             <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="FontWeight" Value="Normal" />
             <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
-            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Padding" Value="12,8" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -254,7 +260,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Width="20" Height="20" CornerRadius="5"
+                        <Border x:Name="bd" Width="20" Height="20" CornerRadius="4"
                                 Background="{TemplateBinding Background}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -319,8 +325,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" CornerRadius="5" Background="{TemplateBinding Background}"
-                                Padding="1">
+                        <Border x:Name="bd" CornerRadius="4" Background="{TemplateBinding Background}"
+                                Padding="4">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -362,7 +368,7 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="{DynamicResource BorderBrush}" CornerRadius="4" Margin="2" />
+                                                <Border Background="{DynamicResource BorderBrush}" CornerRadius="4" Margin="4" />
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>

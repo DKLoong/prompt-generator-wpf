@@ -23,7 +23,7 @@ public class SplitButton : UserControl
     {
         var root = new Border
         {
-            CornerRadius = new CornerRadius(6),
+            CornerRadius = new CornerRadius(4),
             Height = 36,
             Cursor = System.Windows.Input.Cursors.Hand,
             ClipToBounds = true
@@ -40,14 +40,14 @@ public class SplitButton : UserControl
             Content = ModeText(ActionMode.Copy),
             Background = Brushes.Transparent,
             Foreground = Brushes.White,
-            FontSize = 13,
+            FontSize = 16,
             FontWeight = FontWeights.SemiBold,
             BorderThickness = new Thickness(0),
             Cursor = System.Windows.Input.Cursors.Hand,
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             FocusVisualStyle = null,
-            Template = BuildButtonTemplate(new CornerRadius(6, 0, 0, 6))
+            Template = BuildButtonTemplate(new CornerRadius(4, 0, 0, 4))
         };
         _leftBtn.Click += (_, _) =>
         {
@@ -58,7 +58,7 @@ public class SplitButton : UserControl
         _rightBtn = new Button
         {
             Content = "▼",
-            FontSize = 12,
+            FontSize = 16,
             Foreground = Brushes.White,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
@@ -66,7 +66,7 @@ public class SplitButton : UserControl
             HorizontalContentAlignment = HorizontalAlignment.Center,
             VerticalContentAlignment = VerticalAlignment.Center,
             FocusVisualStyle = null,
-            Template = BuildButtonTemplate(new CornerRadius(0, 6, 6, 0))
+            Template = BuildButtonTemplate(new CornerRadius(0, 4, 4, 0))
         };
         _rightBtn.Click += (_, _) => ShowMenu();
 

@@ -7,7 +7,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="提示词生成器"
         Icon="Assets/app-icon.png"
-        Width="365" Height="600" MinWidth="365" MinHeight="440"
+        Width="400" Height="800" MinWidth="400" MinHeight="450"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResize" WindowStartupLocation="Manual" Topmost="True"
         ShowInTaskbar="True" Closing="Window_Closing"
@@ -26,7 +26,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="5"
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -47,10 +47,10 @@
     </Window.Resources>
     <shell:WindowChrome.WindowChrome>
         <!-- 无边框窗口：6px 隐藏缩放边框，CaptionHeight=0（拖动用自绘 DragMove） -->
-        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="8"
                             GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
-    <Border CornerRadius="10" Background="{DynamicResource BgBrush}"
+    <Border CornerRadius="8" Background="{DynamicResource BgBrush}"
             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
@@ -80,7 +80,7 @@
                         </Button.Style>
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="bd" Width="22" Height="22" CornerRadius="5"
+                                <Border x:Name="bd" Width="20" Height="20" CornerRadius="4"
                                         Background="Transparent" BorderThickness="0">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
@@ -103,7 +103,7 @@
                         </Button.Template>
                     </Button>
                     <TextBlock Text="提示词生成器" Foreground="{DynamicResource MutedBrush}"
-                               FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0" />
+                               FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button x:Name="HistoryBtn" Style="{StaticResource TitleBtn}" ToolTip="历史记录"
@@ -125,7 +125,7 @@
             </Grid>
 
             <!-- 模板工具栏 -->
-            <Grid x:Name="TemplateBar" Grid.Row="1" Margin="10,2,10,6">
+            <Grid x:Name="TemplateBar" Grid.Row="1" Margin="12,4,12,8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -135,6 +135,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <ComboBox x:Name="TemplateBox" Height="28" Margin="0,0,8,0"
+                          FontWeight="SemiBold"
                           Style="{StaticResource RoundComboBox}"
                           IsEditable="True" IsTextSearchEnabled="False"
                           IsSynchronizedWithCurrentItem="False"
@@ -199,14 +200,14 @@
             <!-- 字段区 -->
             <!-- Hidden：滚动条不可见但始终预留其布局位置，避免内容刚好超出视口时弹出滚动条挤压内容宽度。
                  Padding 右边取 0，由滚动条预留的 ~10px 充当右边距，与左边距视觉对称。 -->
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden" Padding="10,0,0,4">
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden" Padding="12,0,0,4">
                 <!-- 底部 Margin 12px：最后一个 RowGap 负下边距的渲染溢出 4px 超出 StackPanel 边界、不计入滚动范围，
                      滚动到底时会被视口裁剪，底部留白保证其完整可见 -->
                 <StackPanel x:Name="FieldHost" Margin="0,0,0,12" />
             </ScrollViewer>
 
             <!-- 底部操作 -->
-            <Grid Grid.Row="3" Margin="10,4,10,10">
+            <Grid Grid.Row="3" Margin="12,4,12,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
@@ -218,13 +219,13 @@
                  水平居中；独立于布局（Collapsed 时不占空间），消除按钮伸缩抖动。
                  默认不挡点击（IsHitTestVisible=False）；带"撤销"按钮时置 True 以允许点击撤销 -->
             <Border x:Name="ToastLayer" Grid.Row="2" HorizontalAlignment="Center"
-                    VerticalAlignment="Top" Margin="0,2,0,8" Background="{DynamicResource PanelBrush}"
-                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="4"
-                    Padding="10,3" Visibility="Collapsed" IsHitTestVisible="False">
+                    VerticalAlignment="Top" Margin="0,4,0,8" Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8"
+                    Padding="12,4" Visibility="Collapsed" IsHitTestVisible="False">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Toast" FontSize="12" Foreground="{DynamicResource OkBrush}"
+                    <TextBlock x:Name="Toast" FontSize="14" Foreground="{DynamicResource OkBrush}"
                                VerticalAlignment="Center" />
-                    <Button x:Name="UndoBtn" Content="撤销" Margin="8,0,0,0" Padding="6,1"
+                    <Button x:Name="UndoBtn" Content="撤销" Margin="8,0,0,0" Padding="8,4"
                             FontSize="12" Visibility="Collapsed" Click="UndoBtn_Click"
                             ToolTip="撤销刚才的操作" ToolTipService.InitialShowDelay="800">
                         <Button.Style>
@@ -238,7 +239,7 @@
                                     <Setter.Value>
                                         <ControlTemplate TargetType="Button">
                                             <Border x:Name="bd" Background="{TemplateBinding Background}"
-                                                    CornerRadius="5" Padding="{TemplateBinding Padding}">
+                                                    CornerRadius="4" Padding="{TemplateBinding Padding}">
                                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -269,14 +270,14 @@
                    CustomPopupPlacementCallback="{x:Static local:App.ConfirmPopupPlacement}"
                    Opened="ConfirmPopup_Opened">
                 <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="10" Padding="12"
+                        BorderThickness="1" CornerRadius="8" Padding="12"
                         MinWidth="220" MaxWidth="320"
                         PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
                     <StackPanel>
                         <TextBlock x:Name="ConfirmTitle" Foreground="{DynamicResource TextBrush}"
-                                   FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6" />
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <TextBlock x:Name="ConfirmMsg" Foreground="{DynamicResource MutedBrush}"
-                                   FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10" />
+                                   FontSize="14" TextWrapping="Wrap" Margin="0,0,0,12" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="ConfirmCancel" Content="取消" Width="64" Height="28"
                                     Margin="0,0,8,0" Style="{StaticResource ActionBtn}"
