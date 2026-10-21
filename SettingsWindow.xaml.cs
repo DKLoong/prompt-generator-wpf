@@ -20,17 +20,22 @@ public partial class SettingsWindow : Window
     /// <summary>是否启用粘贴自动清理。</summary>
     public bool PasteCleanupEnabled { get; private set; }
 
-    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled)
+    /// <summary>用户确认后的界面主题（Cool / Warm / Graphite，对应 Themes/ThemeX.xaml）。</summary>
+    public string ThemeText { get; private set; }
+
+    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled, string theme)
     {
         InitializeComponent();
         HotkeyText = currentHotkey;
         DockEnabled = dockEnabled;
         PinRecentEnabled = pinRecentEnabled;
         PasteCleanupEnabled = pasteCleanupEnabled;
+        ThemeText = string.IsNullOrWhiteSpace(theme) ? "Cool" : theme;
         HotkeyBox.Text = currentHotkey;
         DockCheck.IsChecked = dockEnabled;
         PinRecentCheck.IsChecked = pinRecentEnabled;
         PasteCleanupCheck.IsChecked = pasteCleanupEnabled;
+        ThemeCombo.SelectedIndex = ThemeText switch { "Warm" => 1, "Graphite" => 2, _ => 0 };
         // 弹窗打开后焦点留在窗口本身（不自动聚焦热键框）：点击热键框才进入"全选 + 按键捕获"态
         Loaded += (_, _) =>
         {
@@ -218,6 +223,7 @@ public partial class SettingsWindow : Window
             return;
         }
         HotkeyText = text;
+        ThemeText = ThemeCombo.SelectedIndex switch { 1 => "Warm", 2 => "Graphite", _ => "Cool" };
         DialogResult = true;
     }
 }

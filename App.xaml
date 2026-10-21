@@ -4,20 +4,14 @@
              xmlns:local="clr-namespace:PromptGenerator"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
-        <!-- 主题色（方案② 冷灰·松绿） -->
-        <SolidColorBrush x:Key="BgBrush" Color="#23262b" />
-        <SolidColorBrush x:Key="PanelBrush" Color="#2b2f35" />
-        <SolidColorBrush x:Key="Panel2Brush" Color="#353a42" />
-        <SolidColorBrush x:Key="BorderBrush" Color="#42484f" />
-        <SolidColorBrush x:Key="TextBrush" Color="#e8ebee" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#a8afb8" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#5d9c9a" />
-        <!-- 松绿高亮：与底部"生成并复制"按钮 hover 一致 -->
-        <SolidColorBrush x:Key="AccentHoverBrush" Color="#6faeac" />
-        <SolidColorBrush x:Key="DangerBrush" Color="#cf6d5f" />
-        <SolidColorBrush x:Key="OkBrush" Color="#7dab6f" />
+        <!-- 主题色字典：默认合并 ThemeCool（方案② 冷灰·松绿）；设置页可切换 ThemeWarm/ThemeGraphite。
+             全部样式与合并字典同属一个显式 ResourceDictionary（运行时解析必需：Resources 内不能存在无 key 的裸字典） -->
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/ThemeCool.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
-        <!-- ToolTip 统一摆放：固定显示在按钮下方、与按钮水平居中、距按钮外边 2px（键盘聚焦与鼠标悬停一致，不跟随鼠标） -->
+            <!-- ToolTip 统一摆放：固定显示在按钮下方、与按钮水平居中、距按钮外边 2px（键盘聚焦与鼠标悬停一致，不跟随鼠标） -->
         <Style TargetType="ToolTip">
             <Setter Property="Placement" Value="Custom" />
             <Setter Property="CustomPopupPlacementCallback" Value="{x:Static local:App.ToolTipPlacementCallback}" />
@@ -28,7 +22,7 @@
             <Setter Property="Width" Value="34" />
             <Setter Property="Height" Value="28" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -43,13 +37,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource Panel2Brush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource Panel2Brush}" />
                             </Trigger>
                             <!-- 键盘聚焦视觉由代码控制（OnButtonGotKeyboardFocus）：仅键盘导航聚焦时亮淡紫底+白图标；
                                  鼠标点击聚焦不亮（避免点击后高亮残留） -->
                             <!-- 按下反馈：背景紫色 + 图标白色，与设置窗口关闭按钮一致，确认点击已触发 -->
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -60,8 +54,8 @@
 
         <!-- 普通按钮 -->
         <Style x:Key="ActionBtn" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Padding" Value="10,4" />
             <Setter Property="BorderThickness" Value="0" />
@@ -77,13 +71,13 @@
                         <ControlTemplate.Triggers>
                             <!-- 鼠标悬停 / 键盘聚焦：统一淡紫高亮（与"生成并复制"按钮 hover 一致）；按下用主紫加深作反馈 -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -93,14 +87,14 @@
 
         <!-- 文本输入框（圆角，与 ActionBtn 的 5px 圆角一致） -->
         <Style x:Key="FieldInput" TargetType="TextBox">
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="CaretBrush" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="Padding" Value="4,3,4,3" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -115,10 +109,10 @@
                         <ControlTemplate.Triggers>
                             <!-- 聚焦高亮（紫色）放在最后，优先于悬停色：点击/聚焦输入框时始终显示紫色高亮 -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource MutedBrush}" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource MutedBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -129,9 +123,9 @@
         <!-- 模板下拉框：暗底浅字 + 圆角（背景与"新增模板"按钮一致，融入暗色主题） -->
         <Style x:Key="RoundComboBox" TargetType="ComboBox">
             <Setter Property="Height" Value="28" />
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
@@ -156,9 +150,9 @@
                                     <TextBox x:Name="PART_EditableTextBox" Margin="10,0,4,0"
                                              VerticalContentAlignment="Center"
                                              Background="Transparent" BorderThickness="0"
-                                             Foreground="{StaticResource TextBrush}" FontSize="12"
-                                             CaretBrush="{StaticResource TextBrush}"
-                                             SelectionBrush="{StaticResource AccentBrush}"
+                                             Foreground="{DynamicResource TextBrush}" FontSize="12"
+                                             CaretBrush="{DynamicResource TextBrush}"
+                                             SelectionBrush="{DynamicResource AccentBrush}"
                                              Visibility="Collapsed" IsReadOnly="False"
                                              Focusable="True" />
                                     <!-- 下拉箭头独立区：与重命名按钮同尺寸（26px），仅此区点击切换列表；文本区点击不再弹列表 -->
@@ -174,16 +168,16 @@
                                     <!-- 分隔线：箭头区左缘描边通长（上下抵模板框边缘），视觉区分文本区/箭头区；
                                          未聚焦=浅灰（与图标按钮同色 MutedBrush），聚焦模板框时高亮紫色 -->
                                     <Border x:Name="sep" Grid.Column="1" BorderThickness="1,0,0,0"
-                                            BorderBrush="{StaticResource MutedBrush}"
+                                            BorderBrush="{DynamicResource MutedBrush}"
                                             IsHitTestVisible="False" />
                                     <Path Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                                           IsHitTestVisible="False"
-                                          Data="M 0,0 L 4,4 L 8,0" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.5" />
+                                          Data="M 0,0 L 4,4 L 8,0" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.5" />
                                 </Grid>
                             </Border>
                             <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                <Border Background="{StaticResource Panel2Brush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                <Border Background="{DynamicResource Panel2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
                                         CornerRadius="5" MinWidth="{TemplateBinding ActualWidth}"
                                         Margin="0,3,0,0" Padding="3">
                                     <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
@@ -199,11 +193,11 @@
                                 <Setter TargetName="contentPresenter" Property="Visibility" Value="Collapsed" />
                             </Trigger>
                             <Trigger Property="IsDropDownOpen" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                <Setter TargetName="sep" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="sep" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="bd" Property="Opacity" Value="0.5" />
@@ -216,8 +210,8 @@
 
         <!-- 下拉列表项：暗底浅字（与下拉框一致，保证可读性） -->
         <Style TargetType="ComboBoxItem">
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -230,13 +224,13 @@
                         <ControlTemplate.Triggers>
                             <!-- 悬停/键盘高亮：主紫底 + 白字（与选中同视觉——鼠标聚焦/方向键导航即明确"即将打开"的候选项） -->
                             <Trigger Property="IsHighlighted" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="White" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                             <!-- 当前选中项：主紫底 + 白字，突出且可读 -->
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="White" />
                                 <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
@@ -250,7 +244,7 @@
         <Style x:Key="IconBtn" TargetType="Button">
             <Setter Property="Width" Value="20" />
             <Setter Property="Height" Value="20" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
@@ -266,10 +260,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BorderBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource BorderBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -282,7 +276,7 @@
         <Style x:Key="IconBtnSoft" TargetType="Button">
             <Setter Property="Width" Value="16" />
             <Setter Property="Height" Value="16" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -298,11 +292,11 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource BorderBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource AccentHoverBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource BorderBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource AccentHoverBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -315,8 +309,8 @@
         <Style x:Key="IconActionBtn" TargetType="Button">
             <Setter Property="Width" Value="26" />
             <Setter Property="Height" Value="26" />
-            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -332,15 +326,15 @@
                         <ControlTemplate.Triggers>
                             <!-- 悬停 / 键盘聚焦：统一淡紫底 + 图标提亮（与 ActionBtn 高亮体系一致） -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="Foreground" Value="White" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -368,7 +362,7 @@
                                     <Thumb>
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Border Background="{StaticResource BorderBrush}" CornerRadius="4" Margin="2" />
+                                                <Border Background="{DynamicResource BorderBrush}" CornerRadius="4" Margin="2" />
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -379,5 +373,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
+    </ResourceDictionary>
     </Application.Resources>
 </Application>

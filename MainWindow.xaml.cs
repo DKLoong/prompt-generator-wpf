@@ -28,8 +28,13 @@ public partial class MainWindow : Window
     private bool _suppressItemRemove;
     /// <summary>拖拽调序当前高亮的目标行（条目行/字段头行）；原 Background 均为 Transparent，可安全恢复。</summary>
     private Grid? _dragHighlightItem;
-    /// <summary>拖拽落点高亮刷（半透明松绿，与主题强调色 0x5d9c9a 同色系）。</summary>
-    private static readonly Brush DragHighlightBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x5d, 0x9c, 0x9a));
+    /// <summary>生成拖拽落点高亮刷（半透明强调色，随主题切换实时取当前 AccentBrush）。</summary>
+    private static Brush MakeDragHighlightBrush()
+    {
+        var accent = (SolidColorBrush)Application.Current.FindResource("AccentBrush");
+        var c = accent.Color;
+        return new SolidColorBrush(Color.FromArgb(0x26, c.R, c.G, c.B));
+    }
     private bool _allowClose; // 托盘"退出"触发时置 true，允许真正关闭
     private readonly SettingsStore _settingsStore;
     private AppSettings _settings;
@@ -1694,22 +1699,23 @@ public partial class MainWindow : Window
         head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
 
-        // slim 名头：无描边、透明底、紫字、左对齐，右缘=内容框右缘（第 1 列 20px 留给 ×）
+        // slim 名头：无描边、透明底、强调色字、左对齐，右缘=内容框右缘（第 1 列 20px 留给 ×）
         var nameBox = new TextBox
         {
             Height = 24,
             VerticalAlignment = VerticalAlignment.Top,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
-            Foreground = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
-            CaretBrush = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
-            SelectionBrush = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
             FontSize = 15,
             FontWeight = FontWeights.Bold,
             VerticalContentAlignment = VerticalAlignment.Center,
             Padding = new Thickness(4, 0, 4, 0),
             Text = field.Name
         };
+        // 强调色动态引用：主题切换时字段名/光标/选中色自动跟随
+        nameBox.SetResourceReference(Control.ForegroundProperty, "AccentBrush");
+        nameBox.SetResourceReference(TextBoxBase.CaretBrushProperty, "AccentBrush");
+        nameBox.SetResourceReference(TextBoxBase.SelectionBrushProperty, "AccentBrush");
         WatermarkService.SetWatermark(nameBox, "标题，如“要求”");
         PairCompletion.Attach(nameBox);
         nameBox.TextChanged += (_, _) =>
@@ -1823,12 +1829,12 @@ public partial class MainWindow : Window
         var num = new TextBlock
         {
             Text = (itemIndex + 1) + ".",
-            Foreground = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
             VerticalAlignment = VerticalAlignment.Center,
             TextAlignment = TextAlignment.Right
         };
+        num.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
         // 序号列：拖拽调序把手（移动超 5px 启动）+ 单击全选（聚焦本行内容框并全选文本，便于快速删除/覆盖）。
         // 按下进入潜在拖拽并捕获鼠标；未超阈值松开视为单击。
         bool numPress = false;
@@ -2148,12 +2154,11 @@ public partial class MainWindow : Window
             if (v.Length == 0) continue;
             if (!seen.Add(v)) dupSet.Add(v);
         }
-        var dupBrush = new SolidColorBrush(Color.FromRgb(0xcf, 0x6d, 0x5f));
-        var normalBrush = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a));
         foreach (var tb in EnumerateFieldNameBoxes())
         {
             bool isDup = dupSet.Contains(tb.Text.Trim());
-            tb.Foreground = isDup ? dupBrush : normalBrush;
+            // 动态资源引用：重复名用 DangerBrush 警示色、正常用 AccentBrush，主题切换自动跟随
+            tb.SetResourceReference(Control.ForegroundProperty, isDup ? "DangerBrush" : "AccentBrush");
             if (isDup) dup = true;
         }
         return dup;
@@ -2309,7 +2314,7 @@ public partial class MainWindow : Window
         if (_dragHighlightItem == target) return;
         if (_dragHighlightItem != null) _dragHighlightItem.Background = Brushes.Transparent;
         _dragHighlightItem = target;
-        target.Background = DragHighlightBrush;
+        target.Background = MakeDragHighlightBrush();
     }
 
     /// <summary>清除拖拽落点高亮（拖拽结束/取消/离开时调用）。</summary>
@@ -2849,7 +2854,7 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         Logging.Debug("设置期间禁用全局热键");
 
-        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled) { Owner = this };
+        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled, _settings.Theme) { Owner = this };
         bool saved = dlg.ShowDialog() == true;
 
         if (_hotkey != null)
@@ -2881,6 +2886,10 @@ public partial class MainWindow : Window
         _settings.EdgeDockEnabled = dlg.DockEnabled;
         _settings.PinRecentTemplates = dlg.PinRecentEnabled;
         _settings.PasteCleanupEnabled = dlg.PasteCleanupEnabled;
+        _settings.Theme = dlg.ThemeText;
+
+        // 主题即时生效：替换 App 级合并字典，所有 DynamicResource / SetResourceReference 引用自动刷新
+        App.ApplyTheme(_settings.Theme);
 
         try
         {

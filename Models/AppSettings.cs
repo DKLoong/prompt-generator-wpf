@@ -18,6 +18,9 @@ public class AppSettings
     /// <summary>是否启用粘贴文本自动清理：粘贴到条目时去除首尾空行、统一换行符为 \n、清除行尾空白。</summary>
     public bool PasteCleanupEnabled { get; set; } = true;
 
+    /// <summary>界面主题：Cool（冷灰·松绿，默认）/ Warm（暖灰·靛蓝）/ Graphite（石墨·低饱和紫），对应 Themes/ThemeX.xaml。</summary>
+    public string Theme { get; set; } = "Cool";
+
     /// <summary>窗口位置与尺寸记忆。</summary>
     public double WindowX { get; set; } = double.NaN;
     public double WindowY { get; set; } = double.NaN;

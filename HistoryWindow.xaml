@@ -11,14 +11,14 @@
              而 TextBoxView 内部又消费同一 Padding，文本实际左偏移 = 2×Padding，比占位文字明显靠后；
              本样式仅让 TextBoxView 内部单次应用 Padding（5px），与占位文字（Padding+边框=6px）同基准对齐 -->
         <Style x:Key="HistorySearchBox" TargetType="TextBox">
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
-            <Setter Property="CaretBrush" Value="{StaticResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
-            <Setter Property="SelectionBrush" Value="{StaticResource AccentBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}" />
             <Setter Property="Padding" Value="5,0" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -45,19 +45,19 @@
                                 </Button>
                                 <!-- 分隔线：清空区左缘描边通长（上下抵搜索框边缘），聚焦搜索框时高亮紫色（与模板框箭头区一致） -->
                                 <Border x:Name="sep" Grid.Column="1" BorderThickness="1,0,0,0"
-                                        BorderBrush="{StaticResource MutedBrush}" IsHitTestVisible="False" />
+                                        BorderBrush="{DynamicResource MutedBrush}" IsHitTestVisible="False" />
                                 <Path x:Name="ClearIcon" Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                      IsHitTestVisible="False" Stroke="{StaticResource MutedBrush}" StrokeThickness="1.5"
+                                      IsHitTestVisible="False" Stroke="{DynamicResource MutedBrush}" StrokeThickness="1.5"
                                       Data="M 0,0 L 6,6 M 6,0 L 0,6" />
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource MutedBrush}" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource MutedBrush}" />
                             </Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True">
-                                <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                <Setter TargetName="sep" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="sep" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                             <!-- 文本为空：隐藏清空区（按钮/分隔线/图标） -->
                             <Trigger Property="Text" Value="">
@@ -76,8 +76,8 @@
             </Setter>
         </Style>
     </Window.Resources>
-    <Border Background="{StaticResource PanelBrush}" CornerRadius="10"
-            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+    <Border Background="{DynamicResource PanelBrush}" CornerRadius="10"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
             MouseLeftButtonDown="WindowDrag_MouseLeftButtonDown">
         <Grid Margin="14">
             <Grid.RowDefinitions>
@@ -92,7 +92,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="历史记录" Foreground="{StaticResource TextBrush}"
+                <TextBlock Grid.Column="0" Text="历史记录" Foreground="{DynamicResource TextBrush}"
                            FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <Grid Grid.Column="1" Margin="6,0,6,0">
                     <TextBox x:Name="SearchBox" Height="26"
@@ -102,7 +102,7 @@
                              LostKeyboardFocus="SearchBox_LostKeyboardFocus"/>
                     <!-- 占位提示：光标未插入且文本为空时显示（聚焦/输入时隐藏，代码切换 Visibility），不参与命中测试/聚焦 -->
                     <TextBlock x:Name="SearchWatermark" Text="请输入关键词进行检索"
-                               Foreground="{StaticResource MutedBrush}" FontSize="12"
+                               Foreground="{DynamicResource MutedBrush}" FontSize="12"
                                VerticalAlignment="Center" Margin="6,0,0,0"
                                IsHitTestVisible="False" Visibility="Visible"/>
                 </Grid>
@@ -122,40 +122,40 @@
                 <ItemsControl x:Name="HistoryList" Focusable="False" IsTabStop="False">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border Background="{StaticResource Panel2Brush}" CornerRadius="6"
+                            <Border Background="{DynamicResource Panel2Brush}" CornerRadius="6"
                                     Padding="10" Margin="0,0,0,8">
                                 <StackPanel>
                                     <Grid Margin="0,0,0,4">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding TemplateName}"
-                                                       Foreground="{StaticResource AccentBrush}"
+                                                       Foreground="{DynamicResource AccentBrush}"
                                                        FontSize="12" FontWeight="SemiBold"
                                                        VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Timestamp, StringFormat=' · {0:MM-dd HH:mm}'}"
-                                                       Foreground="{StaticResource MutedBrush}" FontSize="11"
+                                                       Foreground="{DynamicResource MutedBrush}" FontSize="11"
                                                        Margin="6,0,0,0" VerticalAlignment="Center"/>
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <Button Content="复制" Width="48" Height="24" Margin="4,0,0,0"
                                                     Style="{StaticResource ActionBtn}" FontSize="11"
-                                                    Background="{StaticResource BorderBrush}"
+                                                    Background="{DynamicResource BorderBrush}"
                                                     Click="CopyBtn_Click" Tag="{Binding Id}"/>
                                             <Button Content="编辑" Width="48" Height="24" Margin="4,0,0,0"
                                                     Style="{StaticResource ActionBtn}" FontSize="11"
-                                                    Background="{StaticResource BorderBrush}"
+                                                    Background="{DynamicResource BorderBrush}"
                                                     Click="EditBtn_Click" Tag="{Binding Id}"/>
                                             <Button Content="删除" Width="48" Height="24" Margin="4,0,0,0"
                                                     Style="{StaticResource ActionBtn}" FontSize="11"
-                                                    Background="{StaticResource BorderBrush}"
+                                                    Background="{DynamicResource BorderBrush}"
                                                     Click="DeleteBtn_Click" Tag="{Binding Id}"/>
                                         </StackPanel>
                                     </Grid>
                                     <TextBox Text="{Binding Prompt}"
-                                             Foreground="{StaticResource TextBrush}" FontSize="12"
+                                             Foreground="{DynamicResource TextBrush}" FontSize="12"
                                              TextWrapping="Wrap" IsReadOnly="True" IsTabStop="False"
                                              Background="Transparent" BorderThickness="0"
                                              Padding="0" Cursor="IBeam"
-                                             SelectionBrush="{StaticResource AccentBrush}"
+                                             SelectionBrush="{DynamicResource AccentBrush}"
                                              SelectionOpacity="0.4"/>
                                 </StackPanel>
                             </Border>

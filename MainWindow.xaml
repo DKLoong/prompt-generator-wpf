@@ -13,13 +13,11 @@
         ShowInTaskbar="True" Closing="Window_Closing"
         PreviewMouseLeftButtonDown="MainWindow_PreviewMouseLeftButtonDown">
     <Window.Resources>
-        <!-- popconfirm 确认按钮高亮：柔和的红色（常态仍 Panel2Brush，仅高亮时显示；随方案② Danger 系） -->
-        <SolidColorBrush x:Key="ConfirmBrush" Color="#cf6d5f" />
-        <SolidColorBrush x:Key="ConfirmHoverBrush" Color="#b75a4e" />
-        <!-- popconfirm 确认按钮：模板同 ActionBtn，仅高亮（hover/键盘聚焦/按下）用柔和红；取消按钮直接用全局 ActionBtn（高亮淡紫） -->
+        <!-- popconfirm 确认按钮：模板同 ActionBtn，仅高亮（hover/键盘聚焦/按下）用柔和红；取消按钮直接用全局 ActionBtn（高亮淡紫）。
+             ConfirmBrush/ConfirmHoverBrush 已在主题字典中定义（随主题切换，保留红语义） -->
         <Style x:Key="ConfirmBtn" TargetType="Button">
-            <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
-            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Padding" Value="10,4" />
             <Setter Property="BorderThickness" Value="0" />
@@ -36,10 +34,10 @@
                             <!-- 鼠标悬停显示柔和红（鼠标路径：仅 hover 高亮）；键盘聚焦红由代码控制
                                  （ConfirmOk_GotKeyboardFocus：程序化/键盘聚焦显示，鼠标点击聚焦不显示） -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ConfirmBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ConfirmBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bd" Property="Background" Value="{StaticResource ConfirmHoverBrush}" />
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ConfirmHoverBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -52,8 +50,8 @@
         <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
                             GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
-    <Border CornerRadius="10" Background="{StaticResource BgBrush}"
-            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+    <Border CornerRadius="10" Background="{DynamicResource BgBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="36" />
@@ -77,7 +75,7 @@
                              置顶态紫图标生效；ClearValue 后回落样式浅灰（非置顶）/触发器紫（置顶）。 -->
                         <Button.Style>
                             <Style TargetType="Button">
-                                <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
                             </Style>
                         </Button.Style>
                         <Button.Template>
@@ -89,22 +87,22 @@
                                 <ControlTemplate.Triggers>
                                     <!-- 未置顶：hover 浅灰底（与标题栏其他按钮一致） -->
                                     <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="bd" Property="Background" Value="{StaticResource Panel2Brush}" />
+                                        <Setter TargetName="bd" Property="Background" Value="{DynamicResource Panel2Brush}" />
                                     </Trigger>
                                     <!-- 键盘聚焦视觉由代码控制（OnButtonGotKeyboardFocus）：仅键盘导航聚焦时亮淡紫底，
                                          鼠标点击聚焦不亮（避免点击置顶切换时闪烁紫填充） -->
                                     <!-- 置顶态：强调色描边 + 强调色图标；放最后，hover/press 时不叠填充（点击切换置顶不闪填充） -->
                                     <Trigger Property="Tag" Value="pinned">
                                         <Setter TargetName="bd" Property="Background" Value="Transparent" />
-                                        <Setter TargetName="bd" Property="BorderBrush" Value="#5d9c9a" />
+                                        <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                         <Setter TargetName="bd" Property="BorderThickness" Value="1.5" />
-                                        <Setter Property="Foreground" Value="#5d9c9a" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>
                     </Button>
-                    <TextBlock Text="提示词生成器" Foreground="{StaticResource MutedBrush}"
+                    <TextBlock Text="提示词生成器" Foreground="{DynamicResource MutedBrush}"
                                FontSize="12" VerticalAlignment="Center" Margin="6,0,0,0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -220,11 +218,11 @@
                  水平居中；独立于布局（Collapsed 时不占空间），消除按钮伸缩抖动。
                  默认不挡点击（IsHitTestVisible=False）；带"撤销"按钮时置 True 以允许点击撤销 -->
             <Border x:Name="ToastLayer" Grid.Row="2" HorizontalAlignment="Center"
-                    VerticalAlignment="Top" Margin="0,2,0,8" Background="#2b2f35"
-                    BorderBrush="#5d9c9a" BorderThickness="1" CornerRadius="4"
+                    VerticalAlignment="Top" Margin="0,2,0,8" Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="4"
                     Padding="10,3" Visibility="Collapsed" IsHitTestVisible="False">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Toast" FontSize="12" Foreground="{StaticResource OkBrush}"
+                    <TextBlock x:Name="Toast" FontSize="12" Foreground="{DynamicResource OkBrush}"
                                VerticalAlignment="Center" />
                     <Button x:Name="UndoBtn" Content="撤销" Margin="8,0,0,0" Padding="6,1"
                             FontSize="12" Visibility="Collapsed" Click="UndoBtn_Click"
@@ -232,7 +230,7 @@
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="Background" Value="Transparent" />
-                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                                 <Setter Property="BorderThickness" Value="0" />
                                 <Setter Property="Cursor" Value="Hand" />
                                 <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -246,13 +244,13 @@
                                             <ControlTemplate.Triggers>
                                                 <!-- 圆角矩形淡紫高亮：与全局 ActionBtn 高亮体系一致 -->
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
                                                 </Trigger>
                                                 <Trigger Property="IsKeyboardFocused" Value="True">
-                                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
                                                 </Trigger>
                                                 <Trigger Property="IsPressed" Value="True">
-                                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentBrush}" />
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
                                                 </Trigger>
                                             </ControlTemplate.Triggers>
                                         </ControlTemplate>
@@ -270,14 +268,14 @@
                    Focusable="True" StaysOpen="False" PopupAnimation="Fade"
                    CustomPopupPlacementCallback="{x:Static local:App.ConfirmPopupPlacement}"
                    Opened="ConfirmPopup_Opened">
-                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}"
+                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
                         BorderThickness="1" CornerRadius="10" Padding="12"
                         MinWidth="220" MaxWidth="320"
                         PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
                     <StackPanel>
-                        <TextBlock x:Name="ConfirmTitle" Foreground="{StaticResource TextBrush}"
+                        <TextBlock x:Name="ConfirmTitle" Foreground="{DynamicResource TextBrush}"
                                    FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <TextBlock x:Name="ConfirmMsg" Foreground="{StaticResource MutedBrush}"
+                        <TextBlock x:Name="ConfirmMsg" Foreground="{DynamicResource MutedBrush}"
                                    FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button x:Name="ConfirmCancel" Content="取消" Width="64" Height="28"

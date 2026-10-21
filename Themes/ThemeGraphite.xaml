@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 主题：方案③ 石墨·低饱和紫 -->
+    <SolidColorBrush x:Key="BgBrush" Color="#242426" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#2c2c2e" />
+    <SolidColorBrush x:Key="Panel2Brush" Color="#363638" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#434345" />
+    <SolidColorBrush x:Key="TextBrush" Color="#ececef" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#b6b6bd" />
+    <SolidColorBrush x:Key="FaintBrush" Color="#888890" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#7e74cf" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#948bd9" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#d95f5f" />
+    <SolidColorBrush x:Key="OkBrush" Color="#6fae74" />
+    <!-- popconfirm 确认按钮柔和红（破坏性操作语义色，随主题但保留红） -->
+    <SolidColorBrush x:Key="ConfirmBrush" Color="#d95f5f" />
+    <SolidColorBrush x:Key="ConfirmHoverBrush" Color="#bd4e4e" />
+</ResourceDictionary>

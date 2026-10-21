@@ -1,0 +1,18 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 主题：方案① 暖灰·靛蓝 -->
+    <SolidColorBrush x:Key="BgBrush" Color="#262626" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#2e2e2e" />
+    <SolidColorBrush x:Key="Panel2Brush" Color="#383838" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#454545" />
+    <SolidColorBrush x:Key="TextBrush" Color="#f0f0ee" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#b8b8b4" />
+    <SolidColorBrush x:Key="FaintBrush" Color="#8a8a86" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#6f7bd9" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#8792e0" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#d96f5c" />
+    <SolidColorBrush x:Key="OkBrush" Color="#6fae74" />
+    <!-- popconfirm 确认按钮柔和红（破坏性操作语义色，随主题但保留红） -->
+    <SolidColorBrush x:Key="ConfirmBrush" Color="#d96f5c" />
+    <SolidColorBrush x:Key="ConfirmHoverBrush" Color="#bd5f4c" />
+</ResourceDictionary>

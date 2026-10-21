@@ -84,14 +84,19 @@ public partial class App : Application
 
         // 初始化统一日志：从设置读取 LogLevel，命令行 --debug 可临时提升到 Debug
         int settingsLevel = 2; // Info
+        string theme = "Cool";
         try
         {
             var settings = new SettingsStore(AppPaths.DataDir).Load();
             settingsLevel = settings.LogLevel;
+            theme = settings.Theme;
         }
         catch (Exception ex) { Logging.Warn($"设置读取失败，使用默认 Info：{ex.Message}"); }
         Logging.Init(e.Args, (LogLevel)Math.Clamp(settingsLevel, 0, 3));
         Logging.Info($"进程启动：版本={Environment.Version} 参数={string.Join(" ", e.Args ?? Array.Empty<string>())}");
+
+        // 按已存设置应用主题（替换默认合并的 ThemeCool 字典；在任何窗口创建前）
+        ApplyTheme(theme);
 
         // 显式声明 PerMonitorV2 DPI 感知（必须在任何窗口创建前）
         SetProcessDpiAwarenessContext(new IntPtr(-4)); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
@@ -100,6 +105,29 @@ public partial class App : Application
         MainWindow = main;
         main.Show();
         Logging.Info("主窗口已显示");
+    }
+
+    /// <summary>应用主题：替换 Application 资源中第一个合并字典（默认 ThemeCool）。供启动加载与设置页即时切换共用。</summary>
+    public static void ApplyTheme(string theme)
+    {
+        if (string.IsNullOrWhiteSpace(theme)) theme = "Cool";
+        try
+        {
+            // 从程序集内嵌资源加载（Themes/*.xaml 编译为 BAML，单文件发布兼容）
+            var dict = new ResourceDictionary
+            {
+                Source = new Uri($"pack://application:,,,/Themes/Theme{theme}.xaml", UriKind.Absolute)
+            };
+            if (Application.Current.Resources.MergedDictionaries.Count > 0)
+                Application.Current.Resources.MergedDictionaries[0] = dict;
+            else
+                Application.Current.Resources.MergedDictionaries.Add(dict);
+            Logging.Debug($"主题已应用：{theme}");
+        }
+        catch (Exception ex)
+        {
+            Logging.Warn($"主题应用失败（保持当前主题）：{ex.Message}");
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)

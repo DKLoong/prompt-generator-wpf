@@ -37,9 +37,6 @@ public static class WatermarkService
 
     private class WatermarkAdorner : Adorner
     {
-        private static readonly SolidColorBrush PlaceholderBrush =
-            new(Color.FromRgb(0x7d, 0x84, 0x8d));
-
         private readonly string _text;
         private readonly TextBox _tb;
         private readonly FormattedText _ft;
@@ -54,7 +51,7 @@ public static class WatermarkService
                 FlowDirection.LeftToRight,
                 new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch),
                 tb.FontSize,
-                PlaceholderBrush,
+                (Brush)Application.Current.FindResource("FaintBrush"),
                 VisualTreeHelper.GetDpi(tb).PixelsPerDip);
             IsHitTestVisible = false;
             tb.TextChanged += OnTextChanged;
@@ -67,6 +64,8 @@ public static class WatermarkService
             base.OnRender(dc);
             if (string.IsNullOrEmpty(_tb.Text) && _text.Length > 0)
             {
+                // 每次渲染取当前主题 FaintBrush（占位符为置灰提示档），主题切换后重绘即跟随
+                _ft.SetForegroundBrush((Brush)Application.Current.FindResource("FaintBrush"));
                 double top = (_tb.ActualHeight - _ft.Height) / 2;
                 // 与输入内容左边距统一：内容起点实测恒为 22 物理px（200% DPI 下 11 DIP），
                 // 不跟随 Padding（Wrap/NoWrap 下 Padding 偏移机制不一致），固定值保证两框提示语与内容完全对齐
