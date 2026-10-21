@@ -6,8 +6,8 @@ namespace PromptGenerator.Services;
 /// <summary>
 /// 按定稿格式与标点规则 v2 拼接提示词。
 /// 定稿规则：
-///   - 格式：## 字段名：1. 内容；2. 内容。## 下一字段：…
-///   - 字段间、内容间不换行；空内容字段整体跳过
+///   - 格式：## 字段名：1. 内容；2. 内容。\n\n## 下一字段：…
+///   - 字段间留一个空行（Markdown 段落分隔，提高字段边界判断的确定性）；内容间不换行；空内容字段整体跳过
 ///   - 子项编号（1. 2. 3.）拼入内容
 ///   - 非末条子项：结尾无标点加"；"（已有任意标点则不加）
 ///   - 末条子项：无标点加"。"；已"。"不加；"！？…"/".!?…"结尾不加；
@@ -32,7 +32,7 @@ public static class PromptBuilder
                 .ToList();
             if (items.Count == 0) continue;
 
-            // 标准 Markdown：## 字段名：换行，每条编号项单独一行；字段间不留空行（TUI 友好）
+            // 标准 Markdown：## 字段名：换行，每条编号项单独一行；字段块后空一行分隔相邻字段（末尾 TrimEnd 收尾）
             sb.Append("## ").Append(field.Name.Trim()).Append('：').AppendLine();
 
             for (int i = 0; i < items.Count; i++)
@@ -42,6 +42,8 @@ public static class PromptBuilder
                 ApplyEndPunct(sb, isLast);
                 sb.AppendLine();
             }
+
+            sb.AppendLine(); // 相邻字段间空行（Markdown 段落分隔）
         }
         return sb.Length > 0 ? sb.ToString().TrimEnd() : null;
     }

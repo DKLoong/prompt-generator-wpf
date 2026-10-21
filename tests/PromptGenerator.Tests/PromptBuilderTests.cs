@@ -7,7 +7,7 @@ namespace PromptGenerator.Tests;
 /// <summary>
 /// PromptBuilder.Build 定稿格式与标点规则 v2 的单元测试。
 /// 规则（与实现注释一致）：
-///   - 格式：## 字段名：\n1. 内容；\n2. 内容。\n（字段间不空行）
+///   - 格式：## 字段名：\n1. 内容；\n2. 内容。\n\n## 下一字段：\n…（相邻字段间空一行）
 ///   - 空字段名 / 空内容项整体跳过；全部为空返回 null
 ///   - 非末条子项：结尾无标点加"；"（已有任意标点不加）
 ///   - 末条子项：无标点加"。"；已"。"/"!?…"结尾不加；"，、；：",;: 替换为"。"；
@@ -35,7 +35,7 @@ public class PromptBuilderTests
 
         var result = PromptBuilder.Build(fields);
 
-        AssertBuild("## 要求：\n1. 写一段；\n2. 要有结论。\n## 风格：\n1. 正式。", result);
+        AssertBuild("## 要求：\n1. 写一段；\n2. 要有结论。\n\n## 风格：\n1. 正式。", result);
     }
 
     [Fact]
