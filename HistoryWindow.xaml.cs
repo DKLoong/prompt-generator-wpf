@@ -37,7 +37,13 @@ public partial class HistoryWindow : Window
                 || (h.Prompt?.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) ?? -1) >= 0);
         HistoryList.ItemsSource = null;
         HistoryList.ItemsSource = query.ToList();
+        // 内容变化（搜索/清空）：列表滚动条回顶（延后到 ItemsSource 重建后的布局完成）
+        Dispatcher.BeginInvoke(new System.Action(() => HistoryScroll?.ScrollToTop()),
+            System.Windows.Threading.DispatcherPriority.Loaded);
     }
+
+    /// <summary>点击清空按钮：清空搜索框内容（触发 TextChanged → 恢复全部列表、占位/清空区同步显隐）。</summary>
+    private void SearchClearBtn_Click(object sender, RoutedEventArgs e) => SearchBox.Clear();
 
     /// <summary>搜索框实时过滤历史条目（无防抖，逐字符刷新；历史量 ≤50，开销可忽略）。
     /// 占位提示：聚焦/输入时隐藏，失焦且文本为空时显示。</summary>
@@ -61,13 +67,21 @@ public partial class HistoryWindow : Window
 
     private void CloseBtn_Click(object sender, RoutedEventArgs e) => Close();
 
-    /// <summary>ESC：关闭历史记录面板（与 ✕ 行为一致）。</summary>
+    /// <summary>ESC：关闭历史记录面板（与 ✕ 行为一致）；
+    /// Ctrl+D：搜索框非空时快速清空（与点击清空按钮同路径，仅键盘操作，既有鼠标逻辑不变）。</summary>
     private void HistoryWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.Escape)
         {
             e.Handled = true;
             Close();
+        }
+        else if (e.Key == System.Windows.Input.Key.D
+            && e.KeyboardDevice.Modifiers == System.Windows.Input.ModifierKeys.Control
+            && !string.IsNullOrEmpty(SearchBox.Text))
+        {
+            e.Handled = true;
+            SearchBox.Clear();
         }
     }
 
