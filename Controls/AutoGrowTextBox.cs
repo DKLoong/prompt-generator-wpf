@@ -11,7 +11,7 @@ namespace PromptGenerator.Controls;
 /// </summary>
 public class AutoGrowTextBox : TextBox
 {
-    public const double MinHeightPx = 32;
+    public const double MinHeightPx = 38;
     public const double MaxHeightPx = 200;
 
     /// <summary>上次算出的目标高度，用于过滤 ExtentHeight 的微小波动，避免多行时每次输入都跳动。</summary>
