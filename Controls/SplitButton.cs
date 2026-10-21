@@ -24,7 +24,7 @@ public class SplitButton : UserControl
         var root = new Border
         {
             CornerRadius = new CornerRadius(6),
-            Background = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
+            Background = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
             Height = 36,
             Cursor = System.Windows.Input.Cursors.Hand,
             ClipToBounds = true
@@ -89,7 +89,7 @@ public class SplitButton : UserControl
         Content = root;
     }
 
-    /// <summary>生成透明底、无边框的按钮模板；hover 时叠淡紫高亮（白 25% 叠加在紫底上），圆角与按钮所在半区一致。</summary>
+    /// <summary>生成透明底、无边框的按钮模板；hover/聚焦用强调色高亮（与全局 AccentHoverBrush 一致），按下用加深色，圆角与按钮所在半区一致。</summary>
     private static ControlTemplate BuildButtonTemplate(CornerRadius radius)
     {
         var templ = new ControlTemplate(typeof(Button));
@@ -107,15 +107,15 @@ public class SplitButton : UserControl
         templ.VisualTree = border;
 
         var hover = new Trigger { Property = UIElement.IsMouseOverProperty, Value = true };
-        hover.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x40, 0xff, 0xff, 0xff)), "bd"));
+        hover.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x6f, 0xae, 0xac)), "bd"));
         templ.Triggers.Add(hover);
 
         var pressed = new Trigger { Property = Button.IsPressedProperty, Value = true };
-        pressed.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x60, 0xff, 0xff, 0xff)), "bd"));
+        pressed.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x4c, 0x86, 0x84)), "bd"));
         templ.Triggers.Add(pressed);
 
         var focused = new Trigger { Property = UIElement.IsKeyboardFocusedProperty, Value = true };
-        focused.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromArgb(0x40, 0xff, 0xff, 0xff)), "bd"));
+        focused.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x6f, 0xae, 0xac)), "bd"));
         templ.Triggers.Add(focused);
 
         return templ;

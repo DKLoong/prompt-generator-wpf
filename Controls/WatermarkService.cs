@@ -38,7 +38,7 @@ public static class WatermarkService
     private class WatermarkAdorner : Adorner
     {
         private static readonly SolidColorBrush PlaceholderBrush =
-            new(Color.FromRgb(0x9a, 0x9b, 0xb5));
+            new(Color.FromRgb(0x7d, 0x84, 0x8d));
 
         private readonly string _text;
         private readonly TextBox _tb;

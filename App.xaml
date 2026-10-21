@@ -4,18 +4,18 @@
              xmlns:local="clr-namespace:PromptGenerator"
              ShutdownMode="OnMainWindowClose">
     <Application.Resources>
-        <!-- 主题色（与既有版本一致） -->
-        <SolidColorBrush x:Key="BgBrush" Color="#1e1e2e" />
-        <SolidColorBrush x:Key="PanelBrush" Color="#27273a" />
-        <SolidColorBrush x:Key="Panel2Brush" Color="#31324b" />
-        <SolidColorBrush x:Key="BorderBrush" Color="#3c3d57" />
-        <SolidColorBrush x:Key="TextBrush" Color="#e5e6f0" />
-        <SolidColorBrush x:Key="MutedBrush" Color="#9a9bb5" />
-        <SolidColorBrush x:Key="AccentBrush" Color="#7c6cf0" />
-        <!-- 淡紫高亮：与底部"生成并复制"按钮 hover 时的合成色一致（#7c6cf0 上叠 25% 白，约 #9d91f4） -->
-        <SolidColorBrush x:Key="AccentHoverBrush" Color="#9d91f4" />
-        <SolidColorBrush x:Key="DangerBrush" Color="#e5534b" />
-        <SolidColorBrush x:Key="OkBrush" Color="#57ab5a" />
+        <!-- 主题色（方案② 冷灰·松绿） -->
+        <SolidColorBrush x:Key="BgBrush" Color="#23262b" />
+        <SolidColorBrush x:Key="PanelBrush" Color="#2b2f35" />
+        <SolidColorBrush x:Key="Panel2Brush" Color="#353a42" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#42484f" />
+        <SolidColorBrush x:Key="TextBrush" Color="#e8ebee" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#a8afb8" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#5d9c9a" />
+        <!-- 松绿高亮：与底部"生成并复制"按钮 hover 一致 -->
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#6faeac" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#cf6d5f" />
+        <SolidColorBrush x:Key="OkBrush" Color="#7dab6f" />
 
         <!-- ToolTip 统一摆放：固定显示在按钮下方、与按钮水平居中、距按钮外边 2px（键盘聚焦与鼠标悬停一致，不跟随鼠标） -->
         <Style TargetType="ToolTip">

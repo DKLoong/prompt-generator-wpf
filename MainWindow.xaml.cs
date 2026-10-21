@@ -28,8 +28,8 @@ public partial class MainWindow : Window
     private bool _suppressItemRemove;
     /// <summary>拖拽调序当前高亮的目标行（条目行/字段头行）；原 Background 均为 Transparent，可安全恢复。</summary>
     private Grid? _dragHighlightItem;
-    /// <summary>拖拽落点高亮刷（半透明淡紫，与主题紫 0x7c6cf0 同色系）。</summary>
-    private static readonly Brush DragHighlightBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x7c, 0x6c, 0xf0));
+    /// <summary>拖拽落点高亮刷（半透明松绿，与主题强调色 0x5d9c9a 同色系）。</summary>
+    private static readonly Brush DragHighlightBrush = new SolidColorBrush(Color.FromArgb(0x26, 0x5d, 0x9c, 0x9a));
     private bool _allowClose; // 托盘"退出"触发时置 true，允许真正关闭
     private readonly SettingsStore _settingsStore;
     private AppSettings _settings;
@@ -1701,9 +1701,9 @@ public partial class MainWindow : Window
             VerticalAlignment = VerticalAlignment.Top,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
-            Foreground = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
-            CaretBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
-            SelectionBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
+            CaretBrush = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
+            SelectionBrush = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
             FontSize = 15,
             FontWeight = FontWeights.Bold,
             VerticalContentAlignment = VerticalAlignment.Center,
@@ -1823,7 +1823,7 @@ public partial class MainWindow : Window
         var num = new TextBlock
         {
             Text = (itemIndex + 1) + ".",
-            Foreground = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0)),
+            Foreground = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a)),
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
             VerticalAlignment = VerticalAlignment.Center,
@@ -2148,8 +2148,8 @@ public partial class MainWindow : Window
             if (v.Length == 0) continue;
             if (!seen.Add(v)) dupSet.Add(v);
         }
-        var dupBrush = new SolidColorBrush(Color.FromRgb(0xe5, 0x53, 0x4b));
-        var normalBrush = new SolidColorBrush(Color.FromRgb(0x7c, 0x6c, 0xf0));
+        var dupBrush = new SolidColorBrush(Color.FromRgb(0xcf, 0x6d, 0x5f));
+        var normalBrush = new SolidColorBrush(Color.FromRgb(0x5d, 0x9c, 0x9a));
         foreach (var tb in EnumerateFieldNameBoxes())
         {
             bool isDup = dupSet.Contains(tb.Text.Trim());
@@ -3072,15 +3072,31 @@ public partial class MainWindow : Window
 
     private void ConfirmCancel_Click(object sender, RoutedEventArgs e)
     {
-        ConfirmPopup.IsOpen = false;
-        _confirmAction = null;
-        _confirmByKeyboard = false;
-        // 键盘取消（Esc，或 Tab 到取消后 Enter：sender 均为 ConfirmPopup）后焦点回锚点按钮（重置/删除）；
-        // 鼠标点击取消（IsMouseOver=true）不回焦
+        // 键盘取消（Esc，或 Tab 到取消后 Enter：sender 均非按钮）后焦点回锚点按钮（重置/删除）；
+        // 鼠标点击取消（IsMouseOver=true）失焦
         bool byKeyboard = !(sender is Button b && b.IsMouseOver);
         var returnTo = byKeyboard ? _confirmReturnFocus : null;
+        var mouseAnchor = byKeyboard ? null : _confirmReturnFocus;   // 鼠标路径：保留锚点引用用于延后清焦判断
         _confirmReturnFocus = null;
-        if (returnTo != null) returnTo.Focus();   // 类级 handler 自动显示 tooltip+聚焦高亮
+        _confirmAction = null;
+        _confirmByKeyboard = false;
+        ConfirmPopup.IsOpen = false;
+        if (returnTo != null)
+            returnTo.Focus();   // 键盘取消：回焦锚点（类级 handler 自动显示 tooltip+聚焦高亮）
+        else
+        {
+            // 鼠标取消：Popup 关闭后 WPF 会把主窗口焦点恢复到锚点按钮，恢复发生的时机不固定
+            // （实测同步与 Loaded 延后均被覆盖）。先同步清焦一次，再延后至最低优先级
+            // （ContextIdle，必晚于一切焦点恢复）兜底清焦——仅当焦点确实落在锚点上才清，
+            // 避免误清新聚焦的其他元素
+            Keyboard.ClearFocus();
+            var anchor = mouseAnchor;
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                if (anchor != null && Keyboard.FocusedElement == anchor)
+                    Keyboard.ClearFocus();
+            }));
+        }
     }
 
     private void ConfirmPopup_PreviewKeyDown(object sender, KeyEventArgs e)
