@@ -1,7 +1,7 @@
 <Window x:Class="PromptGenerator.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="设置" Width="360" Height="320"
+        Title="设置" Width="360" Height="360"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="NoResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         PreviewKeyDown="SettingsWindow_PreviewKeyDown"
@@ -50,6 +50,11 @@
                           Content="最近使用置顶" Checked="PinRecentCheck_Changed" Unchecked="PinRecentCheck_Changed"/>
                 <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{StaticResource MutedBrush}"
                            Text="最近使用的 5 个模板自动排到下拉列表最前"/>
+
+                <CheckBox x:Name="PasteCleanupCheck" Margin="0,12,0,0" Foreground="{StaticResource TextBrush}" FontSize="12"
+                          Content="粘贴自动清理" Checked="PasteCleanupCheck_Changed" Unchecked="PasteCleanupCheck_Changed"/>
+                <TextBlock Margin="20,4,0,0" FontSize="11" Foreground="{StaticResource MutedBrush}"
+                           Text="粘贴到条目时去除首尾空行、统一换行符为 \n、清除行尾空白"/>
             </StackPanel>
 
             <!-- 底部按钮 -->

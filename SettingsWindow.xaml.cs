@@ -17,15 +17,20 @@ public partial class SettingsWindow : Window
     /// <summary>是否启用"最近使用置顶"。</summary>
     public bool PinRecentEnabled { get; private set; }
 
-    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled)
+    /// <summary>是否启用粘贴自动清理。</summary>
+    public bool PasteCleanupEnabled { get; private set; }
+
+    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled)
     {
         InitializeComponent();
         HotkeyText = currentHotkey;
         DockEnabled = dockEnabled;
         PinRecentEnabled = pinRecentEnabled;
+        PasteCleanupEnabled = pasteCleanupEnabled;
         HotkeyBox.Text = currentHotkey;
         DockCheck.IsChecked = dockEnabled;
         PinRecentCheck.IsChecked = pinRecentEnabled;
+        PasteCleanupCheck.IsChecked = pasteCleanupEnabled;
         // 弹窗打开后焦点留在窗口本身（不自动聚焦热键框）：点击热键框才进入"全选 + 按键捕获"态
         Loaded += (_, _) =>
         {
@@ -95,6 +100,11 @@ public partial class SettingsWindow : Window
     private void PinRecentCheck_Changed(object sender, RoutedEventArgs e)
     {
         PinRecentEnabled = PinRecentCheck.IsChecked == true;
+    }
+
+    private void PasteCleanupCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        PasteCleanupEnabled = PasteCleanupCheck.IsChecked == true;
     }
 
     /// <summary>捕获按键组合：直接把按下的键格式化为 "Ctrl+Alt+P"。</summary>

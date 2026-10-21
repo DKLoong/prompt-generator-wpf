@@ -1812,6 +1812,7 @@ public partial class MainWindow : Window
         ta.HorizontalAlignment = HorizontalAlignment.Stretch;
         WatermarkService.SetWatermark(ta, "正文，回车加条，Shift+Enter换行");
         PairCompletion.Attach(ta);
+        DataObject.AddPastingHandler(ta, OnContentPaste);
         ta.PreviewKeyDown += (_, e) =>
         {
             // Ctrl+Z：IME 符号替换选中文本（包裹/补右/跳过/替换）产生多个撤销单元，且 WPF Undo 不恢复选区。
@@ -1960,6 +1961,42 @@ public partial class MainWindow : Window
                 ClearDragHighlight();
         };
         return item;
+    }
+
+    /// <summary>内容框粘贴清理：启用设置时，一次性清理剪贴板文本（去首尾空行/统一 \n/行尾去空白）后替换默认粘贴。
+    /// 通过修改 DataObject 让 WPF 默认粘贴使用清理后文本（官方推荐方式，避免手动插入被 Paste() 内部流程覆盖/双重插入）。
+    /// 开关关闭、剪贴板无文本（如图片）、清理后无变化 → 一律放行默认粘贴，零回归。</summary>
+    private void OnContentPaste(object sender, DataObjectPastingEventArgs e)
+    {
+        if (!_settings.PasteCleanupEnabled) return;
+        if (!e.DataObject.GetDataPresent(DataFormats.UnicodeText)) return;
+        string raw = e.DataObject.GetData(DataFormats.UnicodeText) as string ?? "";
+        if (string.IsNullOrEmpty(raw)) return;
+        string cleaned = CleanPastedText(raw);
+        if (cleaned == raw) return;
+        // WPF 默认粘贴读取 DataObjectPastingEventArgs.DataObject。源码注释（TextEditorCopyPaste._DoPaste）：
+        // 全局剪贴板上的 DataObject 不可原地修改，自定义数据必须新建 DataObject 实例赋给 DataObject 属性，
+        // 随后由 WPF 标准路径插入，撤销/光标/选区行为与默认粘贴完全一致。
+        var cleanedData = new DataObject();
+        cleanedData.SetData(DataFormats.UnicodeText, cleaned);
+        e.DataObject = cleanedData;
+    }
+
+    /// <summary>粘贴文本清理：统一 \r\n/\r 为 \n；去除首尾空行（含全空白行）；清除每行行尾空白。纯字符串处理，一次性执行。</summary>
+    private static string CleanPastedText(string raw)
+    {
+        string text = raw.Replace("\r\n", "\n").Replace('\r', '\n');
+        string[] lines = text.Split('\n');
+        int start = 0, end = lines.Length;
+        while (start < end && string.IsNullOrWhiteSpace(lines[start])) start++;
+        while (end > start && string.IsNullOrWhiteSpace(lines[end - 1])) end--;
+        var sb = new System.Text.StringBuilder();
+        for (int i = start; i < end; i++)
+        {
+            if (i > start) sb.Append('\n');
+            sb.Append(lines[i].TrimEnd());
+        }
+        return sb.ToString();
     }
 
     /// <summary>在指定位置增量插入一个空内容框 UI，不重建其他行。</summary>
@@ -2710,7 +2747,7 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         Logging.Debug("设置期间禁用全局热键");
 
-        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates) { Owner = this };
+        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled) { Owner = this };
         bool saved = dlg.ShowDialog() == true;
 
         if (_hotkey != null)
@@ -2741,6 +2778,7 @@ public partial class MainWindow : Window
 
         _settings.EdgeDockEnabled = dlg.DockEnabled;
         _settings.PinRecentTemplates = dlg.PinRecentEnabled;
+        _settings.PasteCleanupEnabled = dlg.PasteCleanupEnabled;
 
         try
         {
