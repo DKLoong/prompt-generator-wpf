@@ -1917,7 +1917,7 @@ public partial class MainWindow : Window
         ta.Padding = new Thickness(4, 4, 4, 4);
         ta.HorizontalAlignment = HorizontalAlignment.Stretch;
         WatermarkService.SetWatermark(ta, "正文，回车加条，Shift+Enter换行");
-        WatermarkService.SetWatermarkOffsetX(ta, 14);
+        WatermarkService.SetWatermarkOffsetX(ta, 9);
         PairCompletion.Attach(ta);
         DataObject.AddPastingHandler(ta, OnContentPaste);
         ta.PreviewKeyDown += (_, e) =>
