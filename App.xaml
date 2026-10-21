@@ -128,7 +128,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
             <Setter Property="FontSize" Value="14" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
