@@ -54,7 +54,7 @@
                 <CheckBox x:Name="PasteCleanupCheck" Margin="0,12,0,0" Foreground="{DynamicResource TextBrush}" FontSize="14"
                           Content="粘贴自动清理" Checked="PasteCleanupCheck_Changed" Unchecked="PasteCleanupCheck_Changed"/>
                 <TextBlock Margin="20,4,0,0" FontSize="12" Foreground="{DynamicResource MutedBrush}"
-                           Text="粘贴到条目时去除首尾空行、统一换行符为 \n、清除行尾空白"/>
+                           Text="粘贴到条目时去除首尾空行、统一换行符为 \n、清除行首尾空白"/>
 
                 <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,16,0,12"/>
 

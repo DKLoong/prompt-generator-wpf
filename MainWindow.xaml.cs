@@ -2070,7 +2070,7 @@ public partial class MainWindow : Window
         return item;
     }
 
-    /// <summary>内容框粘贴清理：启用设置时，一次性清理剪贴板文本（去首尾空行/统一 \n/行尾去空白）后替换默认粘贴。
+    /// <summary>内容框粘贴清理：启用设置时，一次性清理剪贴板文本（去首尾空行/统一 \n/行首尾去空白）后替换默认粘贴。
     /// 通过修改 DataObject 让 WPF 默认粘贴使用清理后文本（官方推荐方式，避免手动插入被 Paste() 内部流程覆盖/双重插入）。
     /// 开关关闭、剪贴板无文本（如图片）、清理后无变化 → 一律放行默认粘贴，零回归。</summary>
     private void OnContentPaste(object sender, DataObjectPastingEventArgs e)
@@ -2089,7 +2089,7 @@ public partial class MainWindow : Window
         e.DataObject = cleanedData;
     }
 
-    /// <summary>粘贴文本清理：统一 \r\n/\r 为 \n；去除首尾空行（含全空白行）；清除每行行尾空白。纯字符串处理，一次性执行。</summary>
+    /// <summary>粘贴文本清理：统一 \r\n/\r 为 \n；去除首尾空行（含全空白行）；清除每行行首尾空白。纯字符串处理，一次性执行。</summary>
     private static string CleanPastedText(string raw)
     {
         string text = raw.Replace("\r\n", "\n").Replace('\r', '\n');
@@ -2101,7 +2101,7 @@ public partial class MainWindow : Window
         for (int i = start; i < end; i++)
         {
             if (i > start) sb.Append('\n');
-            sb.Append(lines[i].TrimEnd());
+            sb.Append(lines[i].Trim());
         }
         return sb.ToString();
     }

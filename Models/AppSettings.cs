@@ -15,7 +15,7 @@ public class AppSettings
     /// <summary>是否启用"最近使用置顶"：最近使用的 5 个模板自动排到下拉列表最前。</summary>
     public bool PinRecentTemplates { get; set; } = true;
 
-    /// <summary>是否启用粘贴文本自动清理：粘贴到条目时去除首尾空行、统一换行符为 \n、清除行尾空白。</summary>
+    /// <summary>是否启用粘贴文本自动清理：粘贴到条目时去除首尾空行、统一换行符为 \n、清除行首尾空白。</summary>
     public bool PasteCleanupEnabled { get; set; } = true;
 
     /// <summary>界面主题：Cool（冷灰·松绿，默认）/ Warm（暖灰·靛蓝）/ Graphite（石墨·低饱和紫），对应 Themes/ThemeX.xaml。</summary>
