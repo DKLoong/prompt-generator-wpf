@@ -42,12 +42,14 @@ public partial class App : Application
     public static readonly CustomPopupPlacementCallback ConfirmPopupPlacement = ConfirmPlacement;
 
     private static CustomPopupPlacement[] ConfirmPlacement(Size popupSize, Size targetSize, Point offset)
+        // 弹层内容外层有阴影留白 Margin(10,8,10,14)：popupSize 含外层尺寸，内容相对外层偏移 (10,8)。
+        // 四个候选点补偿该偏移，使"内容"始终与锚点按原规则对齐（下方/上方左对齐优先，右对齐兜底）。
         => new[]
         {
-            new CustomPopupPlacement(new Point(0, targetSize.Height + 4), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(0, -popupSize.Height - 4), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, targetSize.Height + 4), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width, -popupSize.Height - 4), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(-10, targetSize.Height - 4), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(-10, -popupSize.Height + 10), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width + 10, targetSize.Height - 4), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width + 10, -popupSize.Height + 10), PopupPrimaryAxis.Horizontal),
         };
 
     private static CustomPopupPlacement[] ToolTipPlacement(Size popupSize, Size targetSize, Point offset)

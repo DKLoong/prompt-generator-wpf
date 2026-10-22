@@ -64,7 +64,6 @@
             <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="TitleBar_OnMouseDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
                     <Button x:Name="PinBtn" Width="24" Height="24"
-                            FontSize="13" Content="&#x1F4CC;" FontFamily="Segoe UI Emoji"
                             FocusVisualStyle="{x:Null}"
                             ToolTip="切换窗口置顶"
                             ToolTipService.InitialShowDelay="800"
@@ -91,16 +90,22 @@
                                     </Trigger>
                                     <!-- 键盘聚焦视觉由代码控制（OnButtonGotKeyboardFocus）：仅键盘导航聚焦时亮淡紫底，
                                          鼠标点击聚焦不亮（避免点击置顶切换时闪烁紫填充） -->
-                                    <!-- 置顶态：强调色描边 + 强调色图标；放最后，hover/press 时不叠填充（点击切换置顶不闪填充） -->
+                                    <!-- 置顶态：仅强调色图标，无描边（重绘后图标饱满，描边显拥挤，故去掉边框）；放最后，
+                                         hover/press 时不叠填充（点击切换置顶不闪填充） -->
                                     <Trigger Property="Tag" Value="pinned">
                                         <Setter TargetName="bd" Property="Background" Value="Transparent" />
-                                        <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                                        <Setter TargetName="bd" Property="BorderThickness" Value="1.5" />
                                         <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                                     </Trigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>
+                        <Viewbox Stretch="Uniform" Width="16" Height="16">
+                            <!-- 置顶图标：线性图钉（顶横线 + 尖朝上箭头 + 竖针），1.5px 圆角线性，Stroke 跟随 Foreground（置顶态亮紫） -->
+                            <Path Fill="Transparent"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Data="M 2.5,1.6 L 13.3,1.6 M 8,3.4 L 2.5,8.8 M 8,3.4 L 13.5,8.8 M 8,5.8 L 8,14.5" />
+                        </Viewbox>
                     </Button>
                     <TextBlock Text="提示词生成器" Foreground="{DynamicResource MutedBrush}"
                                FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
@@ -108,15 +113,24 @@
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button x:Name="HistoryBtn" Style="{StaticResource TitleBtn}" ToolTip="历史记录"
                             Click="HistoryBtn_Click">
-                        <Viewbox Stretch="Uniform" Width="14" Height="14">
-                            <!-- 历史记录图标：环形逆时针箭头 + 时钟指针（填充式，颜色跟随 Foreground 以支持按下变白） -->
-                            <!-- F1 = Nonzero 填充规则（与 SVG 默认一致），避免图标内部出现镂空 -->
-                            <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                      Data="F1 M144.050432 311.120128C150.72016 298.14528 159.483744 281.657568 165.972256 271.480736 245.506592 146.735712 385.091328 64 544 64 791.423552 64 992 264.576448 992 512 992 759.423552 791.423552 960 544 960 383.12528 960 242.055648 875.204416 163.047904 747.870016 152.260384 730.484064 148.608608 721.877024 148.608608 721.877024 140.526912 706.07824 121.00352 698.887232 104.646144 705.605952 88.174688 712.371488 81.331744 730.490304 89.107264 746.180064 89.107264 746.180064 94.27984 757.936064 105.745536 776.866816 195.465184 925.000928 358.17136 1024 544 1024 826.769792 1024 1056 794.769792 1056 512 1056 229.230208 826.769792 0 544 0 360.797344 0 200.068256 96.220896 109.592672 240.882816 105.015264 248.201632 99.386304 258.44688 94.010208 268.65776L76.719904 159.49104C73.980704 142.19648 57.73136 130.398432 40.154144 133.182368 22.698592 135.947072 10.815968 152.506944 13.539136 169.700448L38.593024 327.884448C44.117152 362.762368 76.620576 386.597728 111.74736 381.034208L269.931392 355.98032C287.335072 353.22384 299.2216 336.96048 296.437632 319.383232 293.67296 301.927712 277.178208 290.034752 260.117184 292.73696L144.050432 311.120128 144.050432 311.120128 144.050432 311.120128ZM544 223.852736C544 206.26096 529.79632 192 512 192 494.32688 192 480 206.584352 480 224.079136L480 511.72704C480 547.224 508.8624 576 544.27296 576L831.920864 576C849.637664 576 864 561.79632 864 544 864 526.32688 849.418752 512 832.147264 512L575.852736 512C558.26096 512 544 497.418752 544 480.147264L544 223.852736 544 223.852736 544 223.852736Z"/>
+                        <Viewbox Stretch="Uniform" Width="16" Height="16">
+                            <!-- 历史记录图标：线性时钟（4 条等距横线 + 时钟圆 + 时针/分针），1.5px 圆角线性，Stroke 跟随 Foreground -->
+                            <Path Fill="Transparent"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Data="M 0.8,1.2 L 12.8,1.2 M 0.8,5.25 L 5.8,5.25 M 0.8,9.3 L 4.2,9.3 M 0.8,13.35 L 5,13.35 M 10.3,5.1 A 4.7,4.7 0 1 1 10.3,14.5 A 4.7,4.7 0 1 1 10.3,5.1 M 10.3,9.8 L 10.3,7.0 M 10.3,9.8 L 13.0,9.8" />
                         </Viewbox>
                     </Button>
-                    <Button x:Name="SettingsBtn" Style="{StaticResource TitleBtn}" Content="⚙"
-                            ToolTip="设置" Click="SettingsBtn_Click" />
+                    <Button x:Name="SettingsBtn" Style="{StaticResource TitleBtn}"
+                            ToolTip="设置" Click="SettingsBtn_Click">
+                        <Viewbox Stretch="Uniform" Width="16" Height="16">
+                            <!-- 设置图标：线性正六边形 + 中心圆环（参考图实形），1.5px 圆角线性，Stroke 跟随 Foreground -->
+                            <Path Fill="Transparent"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Data="M 4,2.2 L 12,2.2 L 14.8,8 L 12,13.8 L 4,13.8 L 1.2,8 Z M 8,5.72 A 2.24,2.24 0 1 1 8,10.2 A 2.24,2.24 0 1 1 8,5.72" />
+                        </Viewbox>
+                    </Button>
                     <Button x:Name="MinBtn" Style="{StaticResource TitleBtn}" Content="&#x2013;"
                             ToolTip="最小化" Click="MinBtn_Click" />
                     <Button x:Name="CloseBtn" Style="{StaticResource TitleBtn}" Content="&#x2715;"
@@ -152,47 +166,52 @@
                 <!-- 模板操作：重命名 / 新增 / 保存 / 重置 / 删除（图标按钮，ToolTip 提示语义，保存含 Ctrl+S 快捷键） -->
                 <Button x:Name="RenameBtn" Grid.Column="1" Style="{StaticResource IconActionBtn}" Margin="0,0,4,0"
                         ToolTip="重命名模板" Click="RenameTemplate_Click">
-                    <Viewbox Width="14" Height="14" Stretch="Uniform">
-                        <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Data="M800 64a32 32 0 1 1 0 64h-64v832h64a32 32 0 1 1 0 64h-192a32 32 0 1 1 0-64h64V128h-64a32 32 0 0 1 0-64h192z M576 224v0.256a32 32 0 1 1 0 64H480L477.12 288H192a128 128 0 0 0-127.68 118.4L64 416v192a128 128 0 0 0 118.4 127.68L192 736h384a32 32 0 1 1 0 64H192A192 192 0 0 1 0.32 619.264L0 608v-192a192 192 0 0 1 180.736-191.68L192 224h384z m256 0a192 192 0 0 1 191.68 180.736L1024 416v192a192 192 0 0 1-180.736 191.68L832 800a32 32 0 0 1-5.888-63.488l5.76-0.512a128 128 0 0 0 127.808-118.4L960 608v-192a128 128 0 0 0-118.4-127.68L832 288a32 32 0 1 1-6.272-63.488L832 224z M240 464a48 48 0 1 1 0 96 48 48 0 0 1 0-96z m304 16a32 32 0 0 1 0 64h-192a32 32 0 0 1 0-64h192z" />
+                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                        <!-- 重命名图标：左⊏文档框 + 中央贯穿竖线（上下圆头）+ 右⊐框，1.5px 圆角线性，Stroke 跟随 Foreground -->
+                        <Path Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Data="M 7.5,5.4 L 2,5.4 L 2,11.4 L 7.5,11.4 M 3,8.5 L 6.5,8.5 M 10,3 L 10,14 M 7.6,2.5 L 12.4,2.5 M 7.6,14.5 L 12.4,14.5 M 12.5,5.4 L 14.5,5.4 L 14.5,11.4 L 12.5,11.4" />
                     </Viewbox>
                 </Button>
                 <Button Grid.Column="2" Style="{StaticResource IconActionBtn}" Margin="0,0,4,0"
                         ToolTip="新增模板" Click="NewTemplate_Click">
-                    <Viewbox Width="14" Height="14" Stretch="Uniform">
-                        <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Data="M618 958.5H202c-44.8 0-81.3-34.1-81.3-76v-740c0-41.9 36.5-76 81.3-76h610.5c44.8 0 81.3 34.1 81.3 76v521.9c0 12.8-10.4 23.1-23.1 23.1s-23.1-10.4-23.1-23.1V142.5c0-16.4-15.7-29.7-35-29.7H202c-19.3 0-35 13.3-35 29.7v740c0 16.4 15.7 29.7 35 29.7h416c12.8 0 23.1 10.4 23.1 23.1 0.1 12.8-10.3 23.2-23.1 23.2z M738.4 360.5H276c-12.8 0-23.1-10.4-23.1-23.1 0-12.8 10.4-23.1 23.1-23.1h462.5c12.8 0 23.1 10.4 23.1 23.1 0 12.8-10.4 23.1-23.2 23.1z M584.3 595.1H276c-12.8 0-23.1-10.4-23.1-23.1 0-12.8 10.4-23.1 23.1-23.1h308.3c12.8 0 23.1 10.4 23.1 23.1 0 12.7-10.3 23.1-23.1 23.1z M878.8 826.3H614.6c-12.8 0-23.1-10.4-23.1-23.1 0-12.8 10.4-23.1 23.1-23.1h264.3c12.8 0 23.1 10.4 23.1 23.1 0 12.8-10.4 23.1-23.2 23.1z M746.7 958.5c-12.8 0-23.1-10.4-23.1-23.1V671.1c0-12.8 10.4-23.1 23.1-23.1 12.8 0 23.1 10.4 23.1 23.1v264.3c0 12.7-10.3 23.1-23.1 23.1z" />
+                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                        <!-- 新增图标：列表轮廓（顶边+左壁+底边+右上小短线）+ 两条文本线 + 右侧加号，1.5px 圆角线性，Stroke 跟随 Foreground -->
+                        <Path Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Data="M 13.8,2.3 L 2.7,2.3 L 2.7,12.6 L 8,12.6 M 13.8,2.3 L 13.8,4.3 M 4.5,4.8 L 9.8,4.8 M 4.5,7 L 7.3,7 M 10.8,6.8 L 10.8,12.8 M 7.8,9.8 L 13.8,9.8" />
                     </Viewbox>
                 </Button>
                 <Button Grid.Column="3" Style="{StaticResource IconActionBtn}" Margin="0,0,4,0"
                         ToolTip="保存到模板 (Ctrl+S)" Click="SaveTemplate_Click">
-                    <Viewbox Width="14" Height="14" Stretch="Uniform">
-                        <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Data="M725.4 105.7H151.8c-27.1 0-49.2 22-49.2 49.1v711.8c0 27.1 22.1 49.1 49.2 49.1H866c27.1 0 49.2-22 49.2-49.1V294.8L725.4 105.7z m-399.4 40h338.8v241.9c0 12.9-10.5 23.3-23.5 23.3H349.5c-12.9 0-23.5-10.5-23.5-23.3V145.7z m5.4 727.6V612.5c0-4.1 3.4-7.4 7.5-7.4h363.4c4.1 0 7.5 3.3 7.5 7.4v260.8H331.4z m543.8-6.8c0 4.9-4.2 9.1-9.2 9.1H749.9V612.5c0-26.1-21.3-47.4-47.5-47.4H339c-26.2 0-47.5 21.3-47.5 47.4v263.2H151.8c-5 0-9.2-4.2-9.2-9.1V154.8c0-4.9 4.2-9.1 9.2-9.1H286v241.9c0 34.9 28.5 63.3 63.5 63.3h291.8c35 0 63.5-28.4 63.5-63.3V145.7h4l166.4 165.8v555z M638.4 664H400.8c-11 0-20 9-20 20s9 20 20 20h237.6c11 0 20-9 20-20s-8.9-20-20-20z M638.4 765.1H400.8c-11 0-20 9-20 20s9 20 20 20h237.6c11 0 20-9 20-20s-8.9-20-20-20z" />
+                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                        <!-- 保存图标：线性软盘（外框闭合折线 + 顶部 U 形槽连续折线 + 中部标签横条），1.5px 圆角线性，Stroke 跟随 Foreground -->
+                        <Path Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Data="M 13.1,2.4 L 2.7,2.4 L 2.7,13.6 L 13.1,13.6 L 13.1,2.4 Z M 5.7,2.8 L 5.7,6.4 L 10.3,6.4 L 10.3,2.8 M 5.7,9.6 L 10.3,9.6" />
                     </Viewbox>
                 </Button>
                 <Button x:Name="ResetBtn" Grid.Column="4" Style="{StaticResource IconActionBtn}" Margin="0,0,4,0"
                         ToolTip="重置模板" Click="ResetTemplate_Click">
-                    <Viewbox Width="14" Height="14" Stretch="Uniform">
-                        <!-- 重置图标：线条风格油漆刷（竖直手柄 + 箍 + 刷毛框）。Stroke 绑定 Foreground，跟随 hover/按下变色。
-                             粗线=手柄/箍框/刷毛边界与底沿，细线=内部 3 根刷毛（与参考图粗细层次一致） -->
-                        <Canvas Width="24" Height="24">
-                            <Path Fill="Transparent"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                  StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Data="M8.8 1 L8.8 8.8 M15.5 1 L15.5 8.8 M8.8 1 L15.5 1 M0.5 8.8 L23.5 8.8 M0.5 12.5 L23.5 12.5 M0.5 8.8 L0.5 12.5 M23.5 8.8 L23.5 12.5 M2.4 12.5 L2.4 23.2 M21.8 12.5 L21.8 23.2 M2.4 23.2 L21.8 23.2" />
-                            <Path Fill="Transparent"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Data="M7.1 12.5 L7.1 23.2 M12 12.5 L12 23.2 M17.1 12.5 L17.1 23.2" />
-                        </Canvas>
+                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                        <!-- 重置图标：连续 < 箭头尖 + 半圆右弧（与上下横条相切）+ 3 条列表线，1.5px 圆角线性，Stroke 跟随 Foreground -->
+                        <Path Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Data="M 4,1.1 L 1.5,4.1 L 4.1,7.1 M 1.4,4.1 L 10,4.1 M 10,4.1 A 5.2,5.2 0 0 1 15.2,9.3 A 5.2,5.2 0 0 1 10,14.5 M 1.9,14.5 L 10,14.5 M 6.5,7.4 L 12.4,7.4 M 6.5,9.4 L 12.4,9.4 M 6.5,11.4 L 9.9,11.4" />
                     </Viewbox>
                 </Button>
                 <Button Grid.Column="5" Style="{StaticResource IconActionBtn}"
                         ToolTip="删除模板" Click="DeleteTemplate_Click">
-                    <Viewbox Width="14" Height="14" Stretch="Uniform">
-                        <Path Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                              Data="M967.111111 173.511111H56.888889c-8.533333 0-14.222222-2.844444-19.911111-5.688889-5.688889-5.688889-8.533333-14.222222-8.533334-22.755555s2.844444-14.222222 8.533334-19.911111c5.688889-5.688889 11.377778-8.533333 19.911111-8.533334h910.222222c8.533333 0 14.222222 2.844444 19.911111 8.533334 5.688889 5.688889 8.533333 11.377778 8.533334 19.911111 0 8.533333-2.844444 14.222222-8.533334 19.911111-5.688889 5.688889-11.377778 8.533333-19.911111 8.533333z M674.133333 56.888889H349.866667c-8.533333 0-14.222222 0-19.911111-5.688889s-8.533333-11.377778-8.533334-19.911111 2.844444-14.222222 8.533334-19.911111c5.688889-8.533333 11.377778-11.377778 19.911111-11.377778h321.422222c8.533333 0 14.222222 2.844444 19.911111 8.533333s8.533333 11.377778 8.533333 19.911111-2.844444 14.222222-8.533333 19.911112-8.533333 8.533333-8.533333 8.533333z M381.155556 819.2V321.422222c0-8.533333 2.844444-14.222222 8.533333-19.911111s11.377778-8.533333 19.911111-8.533333 14.222222 2.844444 19.911111 8.533333c5.688889 5.688889 8.533333 11.377778 8.533333 19.911111v497.777778c0 8.533333-2.844444 14.222222-8.533333 19.911111-5.688889 5.688889-11.377778 8.533333-19.911111 8.533333s-14.222222-2.844444-19.911111-8.533333c-5.688889-5.688889-8.533333-11.377778-8.533333-19.911111z M153.6 273.066667c5.688889-5.688889 11.377778-8.533333 19.911111-8.533334 8.533333 0 14.222222 2.844444 19.911111 8.533334s8.533333 11.377778 8.533334 19.911111v614.4c0 17.066667 5.688889 31.288889 17.066666 42.666666 14.222222 11.377778 28.444444 17.066667 45.511111 17.066667h497.777778c17.066667 0 31.288889-5.688889 42.666667-17.066667 11.377778-11.377778 17.066667-25.6 17.066666-42.666666V292.977778c0-8.533333 2.844444-14.222222 8.533334-19.911111 5.688889-5.688889 14.222222-8.533333 19.911111-8.533334 8.533333 0 14.222222 2.844444 19.911111 8.533334s8.533333 11.377778 8.533333 19.911111v642.844444c0 25.6-8.533333 45.511111-25.6 62.577778-17.066667 17.066667-36.977778 25.6-62.577777 25.6H233.244444c-25.6 0-45.511111-8.533333-62.577777-25.6-17.066667-17.066667-25.6-36.977778-25.6-62.577778V292.977778c0-8.533333 2.844444-14.222222 8.533333-19.911111z" />
+                    <Viewbox Width="16" Height="16" Stretch="Uniform">
+                        <!-- 删除图标：线性垃圾桶（提手 + 盖 + 桶身 U 形连续折线 + 2 条竖条纹），1.5px 圆角线性，Stroke 跟随 Foreground -->
+                        <Path Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Data="M 5,1.5 L 11,1.5 M 1,3.5 L 15,3.5 M 3.4,5.5 L 3.4,14.5 L 12.5,14.5 L 12.5,5.5 M 6.4,6.5 L 6.4,12.9 M 9.5,6.5 L 9.5,12.9" />
                     </Viewbox>
                 </Button>
             </Grid>
@@ -222,6 +241,9 @@
                     VerticalAlignment="Top" Margin="0,4,0,8" Background="{DynamicResource PanelBrush}"
                     BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8"
                     Padding="12,4" Visibility="Collapsed" IsHitTestVisible="False">
+                <Border.Effect>
+                    <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                </Border.Effect>
                 <StackPanel Orientation="Horizontal">
                     <TextBlock x:Name="Toast" FontSize="14" Foreground="{DynamicResource OkBrush}"
                                VerticalAlignment="Center" />
@@ -269,11 +291,16 @@
                    Focusable="True" StaysOpen="False" PopupAnimation="Fade"
                    CustomPopupPlacementCallback="{x:Static local:App.ConfirmPopupPlacement}"
                    Opened="ConfirmPopup_Opened">
-                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1" CornerRadius="8" Padding="12"
-                        MinWidth="220" MaxWidth="320"
-                        PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
-                    <StackPanel>
+                <!-- 外层 Margin 预留垂直软阴影空间（10,8,10,14），ConfirmPlacement 回调已同步补偿内容对齐 -->
+                <Border Margin="10,8,10,14" Background="Transparent">
+                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12"
+                            MinWidth="220" MaxWidth="320"
+                            PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                        </Border.Effect>
+                        <StackPanel>
                         <TextBlock x:Name="ConfirmTitle" Foreground="{DynamicResource TextBrush}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <TextBlock x:Name="ConfirmMsg" Foreground="{DynamicResource MutedBrush}"
@@ -288,6 +315,7 @@
                                     LostKeyboardFocus="ConfirmOk_LostKeyboardFocus" />
                         </StackPanel>
                     </StackPanel>
+                    </Border>
                 </Border>
             </Popup>
 

@@ -176,13 +176,21 @@
                                 </Grid>
                             </Border>
                             <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Slide">
-                                <Border Background="{DynamicResource Panel2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                        CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}"
-                                        Margin="0,4,0,0" Padding="4">
-                                    <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                        <ItemsPresenter />
-                                    </ScrollViewer>
+                                   AllowsTransparency="True" Focusable="False" PopupAnimation="Slide"
+                                   HorizontalOffset="-10" VerticalOffset="-4">
+                                <!-- 外层 Margin 预留垂直软阴影空间（内容相对外层偏移 10,8，Offset 已补偿对齐）；
+                                     下拉框左缘/顶部间距与无阴影时一致 -->
+                                <Border Margin="10,8,10,14" Background="Transparent">
+                                    <Border Background="{DynamicResource Panel2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                            CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}"
+                                            Padding="4">
+                                        <Border.Effect>
+                                            <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                                        </Border.Effect>
+                                        <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                            <ItemsPresenter />
+                                        </ScrollViewer>
+                                    </Border>
                                 </Border>
                             </Popup>
                         </Grid>

@@ -1659,7 +1659,7 @@ public partial class MainWindow : Window
         var p = new System.Windows.Shapes.Path
         {
             Data = Geometry.Parse(data),
-            StrokeThickness = 1.6,
+            StrokeThickness = 1.5,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
             Width = 12,
