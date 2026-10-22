@@ -85,6 +85,38 @@
             </Setter>
         </Style>
 
+        <!-- popconfirm 确认按钮（主窗口/历史记录窗口共用）：模板同 ActionBtn，仅高亮（hover/键盘聚焦/按下）用柔和红；
+             取消按钮直接用全局 ActionBtn（高亮淡紫）。ConfirmBrush/ConfirmHoverBrush 已在主题字典中定义（随主题切换，保留红语义） -->
+        <Style x:Key="ConfirmBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- 鼠标悬停显示柔和红（鼠标路径：仅 hover 高亮）；键盘聚焦红由代码控制
+                                 （ConfirmOk_GotKeyboardFocus：程序化/键盘聚焦显示，鼠标点击聚焦不显示） -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ConfirmBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="{DynamicResource ConfirmHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- 文本输入框（圆角，与 ActionBtn 的 5px 圆角一致） -->
         <Style x:Key="FieldInput" TargetType="TextBox">
             <Setter Property="Background" Value="{DynamicResource Panel2Brush}" />

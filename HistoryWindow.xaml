@@ -1,6 +1,7 @@
 <Window x:Class="PromptGenerator.HistoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PromptGenerator"
         Title="历史记录" Width="560" Height="520"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
@@ -163,6 +164,89 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- 轻提示（toast）：悬浮于列表区顶部、水平居中，随窗口移动；独立于布局（Collapsed 不占空间）。
+                 默认不挡点击（IsHitTestVisible=False）；带"撤销"按钮时置 True 以允许点击撤销 -->
+            <Border x:Name="ToastLayer" Grid.Row="1" HorizontalAlignment="Center"
+                    VerticalAlignment="Top" Margin="0,4,0,8" Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8"
+                    Padding="12,4" Visibility="Collapsed" IsHitTestVisible="False">
+                <Border.Effect>
+                    <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                </Border.Effect>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Toast" FontSize="14" Foreground="{DynamicResource OkBrush}"
+                               VerticalAlignment="Center" />
+                    <Button x:Name="UndoBtn" Content="撤销" Margin="8,0,0,0" Padding="8,4"
+                            FontSize="12" Visibility="Collapsed" Click="UndoBtn_Click"
+                            ToolTip="撤销刚才的操作" ToolTipService.InitialShowDelay="800">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Cursor" Value="Hand" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                                    CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <!-- 圆角矩形淡紫高亮：与全局 ActionBtn 高亮体系一致 -->
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                                                </Trigger>
+                                                <Trigger Property="IsKeyboardFocused" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- 确认弹层（popconfirm）：锚定触发按钮，Custom 放置由 WPF 在多候选中自动选完整落屏位置，
+                 解决窗口贴屏幕边缘时显示不全；非模态（点外部自动关闭=取消） -->
+            <Popup x:Name="ConfirmPopup" Placement="Custom" AllowsTransparency="True"
+                   Focusable="True" StaysOpen="False" PopupAnimation="Fade"
+                   CustomPopupPlacementCallback="{x:Static local:App.ConfirmPopupPlacement}"
+                   Opened="ConfirmPopup_Opened">
+                <!-- 内容 Border 直接子元素（对齐规则与回调一致）；底部 Margin 16 为垂直软阴影预留外扩空间。
+                     MaxWidth 260：窄弹层使对齐候选能通过 WPF 落屏（弹窗+按钮在窗口右部时右缘不越界） -->
+                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="12"
+                        MinWidth="220" MaxWidth="260" Margin="0,0,0,16"
+                        PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
+                    <Border.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                    </Border.Effect>
+                        <StackPanel>
+                        <TextBlock x:Name="ConfirmTitle" Foreground="{DynamicResource TextBrush}"
+                                   FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <TextBlock x:Name="ConfirmMsg" Foreground="{DynamicResource MutedBrush}"
+                                   FontSize="14" TextWrapping="Wrap" Margin="0,0,0,12" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button x:Name="ConfirmCancel" Content="取消" Width="64" Height="28"
+                                    Margin="0,0,8,0" Style="{StaticResource ActionBtn}"
+                                    Click="ConfirmCancel_Click" />
+                            <Button x:Name="ConfirmOk" Content="确定" Width="64" Height="28"
+                                    Style="{StaticResource ConfirmBtn}" Click="ConfirmOk_Click"
+                                    GotKeyboardFocus="ConfirmOk_GotKeyboardFocus"
+                                    LostKeyboardFocus="ConfirmOk_LostKeyboardFocus" />
+                        </StackPanel>
+                    </StackPanel>
+                    </Border>
+            </Popup>
         </Grid>
     </Border>
 </Window>
