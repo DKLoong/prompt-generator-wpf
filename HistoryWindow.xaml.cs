@@ -26,8 +26,9 @@ public partial class HistoryWindow : Window
     }
 
     /// <summary>按时间倒序刷新列表；搜索框有非空关键字时，仅保留标题（TemplateName）或内容（Prompt）
-    /// 包含关键字的历史条目（字符串包含匹配，忽略大小写）。空关键字显示全部。</summary>
-    private void RefreshList()
+    /// 包含关键字的历史条目（字符串包含匹配，忽略大小写）。空关键字显示全部。
+    /// scrollToTop=false 时（删除路径）不回顶，由调用方恢复滚动位置，保持"滚动条位置不变、下方内容补缺"。</summary>
+    private void RefreshList(bool scrollToTop = true)
     {
         string keyword = SearchBox.Text?.Trim() ?? "";
         IEnumerable<HistoryEntry> query = _history.OrderByDescending(h => h.Timestamp);
@@ -37,9 +38,12 @@ public partial class HistoryWindow : Window
                 || (h.Prompt?.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) ?? -1) >= 0);
         HistoryList.ItemsSource = null;
         HistoryList.ItemsSource = query.ToList();
-        // 内容变化（搜索/清空）：列表滚动条回顶（延后到 ItemsSource 重建后的布局完成）
-        Dispatcher.BeginInvoke(new System.Action(() => HistoryScroll?.ScrollToTop()),
-            System.Windows.Threading.DispatcherPriority.Loaded);
+        if (scrollToTop)
+        {
+            // 内容变化（搜索/清空）：列表滚动条回顶（延后到 ItemsSource 重建后的布局完成）
+            Dispatcher.BeginInvoke(new System.Action(() => HistoryScroll?.ScrollToTop()),
+                System.Windows.Threading.DispatcherPriority.Loaded);
+        }
     }
 
     /// <summary>点击清空按钮：清空搜索框内容（触发 TextChanged → 恢复全部列表、占位/清空区同步显隐）。</summary>
@@ -151,9 +155,14 @@ public partial class HistoryWindow : Window
         // 记录删除前在排序列表中的位置，用于删除后确定焦点落点
         var sortedBefore = _history.OrderByDescending(h => h.Timestamp).ToList();
         int idx = sortedBefore.IndexOf(entry);
+        // 记录删除前滚动位置（像素）；删除后保持滚动条位置不变、下方内容自动向上补缺
+        double vOffset = HistoryScroll?.VerticalOffset ?? 0;
         _history.Remove(entry);
         _onDelete?.Invoke(entry);
-        RefreshList();
+        RefreshList(scrollToTop: false);
+        if (vOffset > 0)
+            Dispatcher.BeginInvoke(new System.Action(() => HistoryScroll?.ScrollToVerticalOffset(vOffset)),
+                System.Windows.Threading.DispatcherPriority.Loaded);
         // 删除后焦点：（延后到 Loaded 优先级，确保刷新后的条目容器已生成）
         // - 鼠标点击：焦点落回窗口本身、不在任何控件上（消除相邻行复制按钮的键盘高亮残留）
         // - 键盘触发：非最后一条 → 下一条的复制；最后一条 → 上一条的复制；仅剩一条 → 关闭
