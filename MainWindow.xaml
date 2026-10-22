@@ -46,7 +46,9 @@
                         </Button.Style>
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
-                                <Border x:Name="bd" Width="20" Height="20" CornerRadius="4"
+                                <!-- 底色块填满按钮 24×24（取消 20×20 残留限制，消除模板根尺寸/对齐歧义）；
+                                     ContentPresenter 居中承载 16×16 图标（尺寸=内容尺寸，内容天然填满居中） -->
+                                <Border x:Name="bd" CornerRadius="4"
                                         Background="Transparent" BorderThickness="0">
                                     <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
@@ -66,13 +68,14 @@
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Button.Template>
-                        <Viewbox Stretch="Uniform" Width="16" Height="16">
-                            <!-- 置顶图标：线性图钉（顶横线 + 尖朝上箭头 + 竖针），1.5px 圆角线性，Stroke 跟随 Foreground（置顶态亮紫） -->
-                            <Path Fill="Transparent"
-                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                                  StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                                  Data="M 2.5,1.6 L 13.3,1.6 M 8,3.4 L 2.5,8.8 M 8,3.4 L 13.5,8.8 M 8,5.8 L 8,14.5" />
-                        </Viewbox>
+                        <!-- 图标画布 16×16 显式居中于按钮（Path 自撑画布 + Stretch=Uniform，取代 Viewbox
+                             隐式缩放，消除承载层对齐歧义）；Data 几何 x 2.5~13.5 中心 8 = 画布中心 -->
+                        <Path Fill="Transparent"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                              Stretch="Uniform" Width="16" Height="16"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Data="M 2.5,1.6 L 13.3,1.6 M 8,3.4 L 2.5,8.8 M 8,3.4 L 13.5,8.8 M 8,5.8 L 8,14.5" />
                     </Button>
                     <TextBlock Text="提示词生成器" Foreground="{DynamicResource MutedBrush}"
                                FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" />
