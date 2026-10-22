@@ -203,19 +203,24 @@
 
             <!-- 轻提示：窗口内覆盖层，悬浮于模板工具栏下方（Grid.Row=2 顶部），随窗口移动、
                  水平居中；独立于布局（Collapsed 时不占空间），消除按钮伸缩抖动。
-                 默认不挡点击（IsHitTestVisible=False）；带"撤销"按钮时置 True 以允许点击撤销 -->
+                 默认不挡点击（IsHitTestVisible=False）；带"撤销"按钮时置 True 以允许点击撤销。
+                 顶 Margin −4：模板栏底 Margin 8 + (−4) = toast 与模板工具栏外边距 4px（与下拉框/popconfirm 统一） -->
             <Border x:Name="ToastLayer" Grid.Row="2" HorizontalAlignment="Center"
-                    VerticalAlignment="Top" Margin="0,4,0,8" Background="{DynamicResource PanelBrush}"
+                    VerticalAlignment="Top" Margin="0,-4,0,8" Background="{DynamicResource PanelBrush}"
                     BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" CornerRadius="8"
                     Padding="12,4" Visibility="Collapsed" IsHitTestVisible="False">
                 <Border.Effect>
                     <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
                 </Border.Effect>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock x:Name="Toast" FontSize="14" Foreground="{DynamicResource OkBrush}"
-                               VerticalAlignment="Center" />
+                    <!-- Grid 高 26 与撤销按钮（Height 26）一致：保证无撤销按钮的 toast 与带撤销按钮的等高；
+                         文本在 Grid 内垂直居中（TextBlock 无内部垂直居中，直接 MinHeight 会文本偏上） -->
+                    <Grid MinHeight="26">
+                        <TextBlock x:Name="Toast" FontSize="14" Foreground="{DynamicResource OkBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
                     <Button x:Name="UndoBtn" Content="撤销" Margin="8,0,0,0" Padding="8,4"
-                            FontSize="12" Visibility="Collapsed" Click="UndoBtn_Click"
+                            Height="26" FontSize="12" Visibility="Collapsed" Click="UndoBtn_Click"
                             ToolTip="撤销刚才的操作" ToolTipService.InitialShowDelay="800">
                         <Button.Style>
                             <Style TargetType="Button">
