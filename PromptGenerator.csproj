@@ -16,7 +16,7 @@
     <SelfContained Condition="'$(Configuration)' == 'Release'">true</SelfContained>
     <RuntimeIdentifier Condition="'$(Configuration)' == 'Release'">win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract Condition="'$(Configuration)' == 'Release'">true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release'">true</EnableCompressionInSingleFile>
+    <EnableCompressionInSingleFile Condition="'$(Configuration)' == 'Release'">false</EnableCompressionInSingleFile>
     <PublishReadyToRun Condition="'$(Configuration)' == 'Release'">false</PublishReadyToRun>
   </PropertyGroup>
 
