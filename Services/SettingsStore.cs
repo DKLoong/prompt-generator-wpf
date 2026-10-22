@@ -48,13 +48,18 @@ public class SettingsStore
 
     public void Save(AppSettings settings)
     {
+        string tmp = _file + ".tmp";
         try
         {
-            File.WriteAllText(_file, JsonSerializer.Serialize(settings, JsonOpts));
+            // 原子写：先写临时文件、再同卷 Move 覆盖目标（NTFS rename 原子替换）。
+            // 便携场景（U 盘拔出/断电/杀软扫描冲突）下避免直接 WriteAllText 写坏 JSON。
+            File.WriteAllText(tmp, JsonSerializer.Serialize(settings, JsonOpts));
+            File.Move(tmp, _file, overwrite: true);
             _cache = settings;
         }
         catch (Exception ex)
         {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* 清理失败不影响主流程 */ }
             Logging.Error($"设置保存失败：{ex.Message}");
             throw new IOException($"保存设置失败: {ex.Message}", ex);
         }

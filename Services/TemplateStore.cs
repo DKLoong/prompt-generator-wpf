@@ -54,14 +54,18 @@ public class TemplateStore
 
     public void Save(TemplateStoreData data)
     {
+        string tmp = _file + ".tmp";
         try
         {
-            var json = JsonSerializer.Serialize(data, JsonOpts);
-            File.WriteAllText(_file, json);
+            // 原子写：先写临时文件、再同卷 Move 覆盖目标（NTFS rename 原子替换）。
+            // 便携场景（U 盘拔出/断电/杀软扫描冲突）下避免直接 WriteAllText 写坏 JSON。
+            File.WriteAllText(tmp, JsonSerializer.Serialize(data, JsonOpts));
+            File.Move(tmp, _file, overwrite: true);
             _cache = data;
         }
         catch (Exception ex)
         {
+            try { if (File.Exists(tmp)) File.Delete(tmp); } catch { /* 清理失败不影响主流程 */ }
             Logging.Error($"模板保存失败：{ex.Message}");
             throw new IOException($"保存模板失败: {ex.Message}", ex);
         }

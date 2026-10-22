@@ -44,15 +44,17 @@ public static class AppPaths
         }
     }
 
-    /// <summary>回退场景：若 exe 旁存在历史用户数据（只读也可读）而目标为空，复制过来（已存在不覆盖）。失败不阻塞。</summary>
+    /// <summary>回退场景：若 exe 旁存在历史用户数据（只读也可读），按文件逐个补齐到回退目录——
+    /// templates.json / settings.json 各自独立判断（目标已存在同名文件则不覆盖），logs 整目录补齐。失败不阻塞。</summary>
     private static void TryCopyFromPortable(string targetDir)
     {
         try
         {
             var portable = Path.Combine(AppContext.BaseDirectory, "data");
             if (!Directory.Exists(portable)) return;
-            if (!File.Exists(Path.Combine(portable, "templates.json"))) return;
-            if (File.Exists(Path.Combine(targetDir, "templates.json"))) return;
+            bool hasData = File.Exists(Path.Combine(portable, "templates.json"))
+                        || File.Exists(Path.Combine(portable, "settings.json"));
+            if (!hasData) return;
 
             CopyFiles(portable, targetDir);
             var logs = Path.Combine(portable, "logs");

@@ -1,5 +1,4 @@
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Windows;
@@ -84,7 +83,11 @@ public partial class App : Application
                 using var signal = EventWaitHandle.OpenExisting(ShowWindowEventName);
                 signal.Set();
             }
-            catch { /* 已运行实例尚未就绪时静默退出 */ }
+            catch (Exception ex)
+            {
+                // 已运行实例尚未就绪时静默退出；留痕便于定位第二实例唤起失败
+                System.Diagnostics.Trace.WriteLine($"[App] 第二实例唤起信号失败：{ex.Message}");
+            }
             _singleInstanceMutex.Dispose();
             Shutdown();
             return;
@@ -108,8 +111,7 @@ public partial class App : Application
         // 按已存设置应用主题（替换默认合并的 ThemeCool 字典；在任何窗口创建前）
         ApplyTheme(theme);
 
-        // 显式声明 PerMonitorV2 DPI 感知（必须在任何窗口创建前）
-        SetProcessDpiAwarenessContext(new IntPtr(-4)); // DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+        // DPI 感知已由 app.manifest 声明（PerMonitorV2，进程启动即生效），无需也不应在运行时重复设置
         base.OnStartup(e);
         var main = new MainWindow();
         MainWindow = main;
@@ -208,6 +210,4 @@ public partial class App : Application
         catch { /* 崩溃记录失败不影响主流程 */ }
     }
 
-    [DllImport("user32.dll")]
-    private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
 }
