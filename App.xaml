@@ -177,20 +177,18 @@
                             </Border>
                             <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
                                    AllowsTransparency="True" Focusable="False" PopupAnimation="Slide"
-                                   HorizontalOffset="-10" VerticalOffset="-4">
-                                <!-- 外层 Margin 预留垂直软阴影空间（内容相对外层偏移 10,8，Offset 已补偿对齐）；
-                                     下拉框左缘/顶部间距与无阴影时一致 -->
-                                <Border Margin="10,8,10,14" Background="Transparent">
-                                    <Border Background="{DynamicResource Panel2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                            CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}"
-                                            Padding="4">
-                                        <Border.Effect>
-                                            <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
-                                        </Border.Effect>
-                                        <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                            <ItemsPresenter />
-                                        </ScrollViewer>
-                                    </Border>
+                                   VerticalOffset="4">
+                                <!-- 对齐：Placement=Bottom 左对齐；VerticalOffset=4 提供顶部间距（Popup 内容 Margin
+                                     在 DPI 缩放下不可靠，间距一律走 Offset 定位）；底部 Margin 16 为垂直软阴影预留外扩空间 -->
+                                <Border Background="{DynamicResource Panel2Brush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                        CornerRadius="8" MinWidth="{TemplateBinding ActualWidth}"
+                                        Margin="0,0,0,16" Padding="4">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                                    </Border.Effect>
+                                    <ScrollViewer MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
                                 </Border>
                             </Popup>
                         </Grid>

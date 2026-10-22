@@ -291,15 +291,15 @@
                    Focusable="True" StaysOpen="False" PopupAnimation="Fade"
                    CustomPopupPlacementCallback="{x:Static local:App.ConfirmPopupPlacement}"
                    Opened="ConfirmPopup_Opened">
-                <!-- 外层 Margin 预留垂直软阴影空间（10,8,10,14），ConfirmPlacement 回调已同步补偿内容对齐 -->
-                <Border Margin="10,8,10,14" Background="Transparent">
-                    <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12"
-                            MinWidth="220" MaxWidth="320"
-                            PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
-                        <Border.Effect>
-                            <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
-                        </Border.Effect>
+                <!-- 内容 Border 直接子元素（对齐规则与回调一致）；底部 Margin 16 为垂直软阴影预留外扩空间。
+                     MaxWidth 260（非 320）：窄弹层使左对齐候选能通过 WPF 落屏（弹窗+按钮在窗口右部时右缘不越界） -->
+                <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="8" Padding="12"
+                        MinWidth="220" MaxWidth="260" Margin="0,0,0,16"
+                        PreviewKeyDown="ConfirmPopup_PreviewKeyDown">
+                    <Border.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.3" />
+                    </Border.Effect>
                         <StackPanel>
                         <TextBlock x:Name="ConfirmTitle" Foreground="{DynamicResource TextBrush}"
                                    FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
@@ -316,7 +316,6 @@
                         </StackPanel>
                     </StackPanel>
                     </Border>
-                </Border>
             </Popup>
 
             <!-- 托盘图标（不可见元素，不参与布局；IconSource 在代码中从 Assets/app-icon.png 加载） -->

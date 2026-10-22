@@ -37,20 +37,28 @@ public partial class App : Application
     /// <summary>ToolTip 统一摆放回调：按钮下方、水平居中、距按钮外边 2px。</summary>
     public static readonly CustomPopupPlacementCallback ToolTipPlacementCallback = ToolTipPlacement;
 
-    /// <summary>确认弹层（popconfirm）放置回调：首选按钮下方左对齐，其次上方左对齐、
-    /// 下方/上方右对齐——WPF 自动选择第一个能完整落入屏幕的位置（窗口贴屏幕边缘时完整显示）。</summary>
+    /// <summary>确认弹层（popconfirm）放置回调：首选按钮下方右对齐，其次上方右对齐、
+    /// 下方/上方左对齐兜底——WPF 自动选择第一个能完整落入屏幕的位置（窗口贴屏幕边缘时完整显示）。</summary>
     public static readonly CustomPopupPlacementCallback ConfirmPopupPlacement = ConfirmPlacement;
 
     private static CustomPopupPlacement[] ConfirmPlacement(Size popupSize, Size targetSize, Point offset)
-        // 弹层内容外层有阴影留白 Margin(10,8,10,14)：popupSize 含外层尺寸，内容相对外层偏移 (10,8)。
-        // 四个候选点补偿该偏移，使"内容"始终与锚点按原规则对齐（下方/上方左对齐优先，右对齐兜底）。
-        => new[]
+    {
+        // 坐标系：CustomPopupPlacementCallback 的 popupSize/targetSize 与 CustomPopupPlacement.Point
+        // 均为物理像素（同一坐标系，无需 DPI 换算——换算反而错位）。候选点语义=弹窗左上角相对锚点左上角。
+        // gap=8 物理=4 逻辑：弹层与锚点间距。默认右对齐（弹窗右缘贴锚点右缘：弹层整体落在按钮左侧、落于主页面内，
+        // 取消/确定在弹层右下角，缩短鼠标路径）；左对齐兜底；下方优先、上方兜底；
+        // WPF 自动选择第一个能完整落屏的候选（贴屏幕边缘时翻转完整显示）。
+        const double gap = 8;                      // 4 逻辑像素间距
+        double pw = popupSize.Width, ph = popupSize.Height;
+        double tw = targetSize.Width, th = targetSize.Height;
+        return new[]
         {
-            new CustomPopupPlacement(new Point(-10, targetSize.Height - 4), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(-10, -popupSize.Height + 10), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width + 10, targetSize.Height - 4), PopupPrimaryAxis.Horizontal),
-            new CustomPopupPlacement(new Point(targetSize.Width - popupSize.Width + 10, -popupSize.Height + 10), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(tw - pw, th + gap), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(tw - pw, -ph - gap), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(0, th + gap), PopupPrimaryAxis.Horizontal),
+            new CustomPopupPlacement(new Point(0, -ph - gap), PopupPrimaryAxis.Horizontal),
         };
+    }
 
     private static CustomPopupPlacement[] ToolTipPlacement(Size popupSize, Size targetSize, Point offset)
         => new[]
