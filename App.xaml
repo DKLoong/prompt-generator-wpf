@@ -172,14 +172,14 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="28" />
                                     </Grid.ColumnDefinitions>
-                                    <ContentPresenter x:Name="contentPresenter" Margin="8,0,4,0"
+                                    <ContentPresenter x:Name="contentPresenter" Margin="15,0,4,0"
                                                       VerticalAlignment="Center"
                                                       Content="{TemplateBinding SelectionBoxItem}"
                                                       ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                                       ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                                       IsHitTestVisible="False" />
                                     <!-- 可编辑模式：宿主编辑文本框（名字必须是 PART_EditableTextBox） -->
-                                    <TextBox x:Name="PART_EditableTextBox" Margin="8,0,4,0"
+                                    <TextBox x:Name="PART_EditableTextBox" Margin="13,0,4,0"
                                              VerticalContentAlignment="Center"
                                              Background="Transparent" BorderThickness="0"
                                              Foreground="{DynamicResource MutedBrush}" FontSize="14"

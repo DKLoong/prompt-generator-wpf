@@ -613,9 +613,7 @@ public partial class MainWindow : Window
         var sel = TemplateBox.SelectedItem as Template;
         _loadingTemplates = true;
         _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
-        _templatesView.Filter = _filterActive
-            ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
-            : null;
+        _templatesView.Filter = _filterActive ? BuildNameFilter(TemplateBox.Text) : null;
         TemplateBox.ItemsSource = _templatesView;
         if (sel != null)
         {
@@ -657,9 +655,7 @@ public partial class MainWindow : Window
             _loadingTemplates = true;
             var sel = TemplateBox.SelectedItem;
             _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
-            _templatesView.Filter = _filterActive
-                ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
-                : null;
+            _templatesView.Filter = _filterActive ? BuildNameFilter(TemplateBox.Text) : null;
             TemplateBox.ItemsSource = _templatesView;
             if (sel != null) TemplateBox.SelectedItem = sel;
             _loadingTemplates = false;
@@ -975,14 +971,16 @@ public partial class MainWindow : Window
     /// <summary>按当前过滤词切换视图过滤：置顶顺序（GetDisplayOrder）基础上按模板名包含过滤；只改 Filter 谓词，不重建 ItemsSource。
     /// 不复位 SelectedItem/Text：用户输入经免疫恢复走编辑框路径（编辑态），ComboBox 不校正；
     /// 选中项保持原值，方向键在过滤视图中正常导航，Enter 由命中校验把关。</summary>
+    /// <summary>按名称子串过滤模板列表（大小写不敏感）。</summary>
+    private static Predicate<object> BuildNameFilter(string query) =>
+        t => (t as Template)?.Name?.IndexOf(query.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
+
     private void RefreshFilteredList()
     {
         if (_templatesView == null) return;
         string keepText = TemplateBox.Text;
         Logging.Debug($"Refresh keep={keepText} filter={_filterActive} sel={(TemplateBox.SelectedItem as Template)?.Name}");
-        _templatesView.Filter = _filterActive
-            ? new Predicate<object>(t => (t as Template)?.Name?.IndexOf(TemplateBox.Text.Trim(), StringComparison.OrdinalIgnoreCase) >= 0)
-            : null;
+        _templatesView.Filter = _filterActive ? BuildNameFilter(TemplateBox.Text) : null;
         // Refresh() 会触发 ComboBox 内部把 Text 同步回写为当前选中项名（日志实证），该回写的 TextChanged
         // 会被误判"回到选中态"而取消过滤；用 _loadingTemplates 包住，使该次回写短路，保持过滤态与用户输入。
         _loadingTemplates = true;
@@ -2717,7 +2715,7 @@ public partial class MainWindow : Window
         {
             var result = await Task.Run(async () =>
             {
-                var psi = new ProcessStartInfo("claude")
+                var psi = new ProcessStartInfo(_settings.ClaudeCommand)
                 {
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -2857,7 +2855,7 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         Logging.Debug("设置期间禁用全局热键");
 
-        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled, _settings.Theme) { Owner = this };
+        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled, _settings.Theme, _settings.ClaudeCommand) { Owner = this };
         bool saved = dlg.ShowDialog() == true;
 
         if (_hotkey != null)
@@ -2890,6 +2888,7 @@ public partial class MainWindow : Window
         _settings.PinRecentTemplates = dlg.PinRecentEnabled;
         _settings.PasteCleanupEnabled = dlg.PasteCleanupEnabled;
         _settings.Theme = dlg.ThemeText;
+        _settings.ClaudeCommand = dlg.ClaudeCommandText;
 
         // 主题即时生效：替换 App 级合并字典，所有 DynamicResource / SetResourceReference 引用自动刷新
         App.ApplyTheme(_settings.Theme);

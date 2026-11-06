@@ -23,6 +23,9 @@ public class AppSettings
     /// <summary>界面主题：Cool（冷灰·松绿，默认）/ Warm（暖灰·靛蓝）/ Graphite（石墨·低饱和紫），对应 Themes/ThemeX.xaml。</summary>
     public string Theme { get; set; } = Conventions.Themes.Cool;
 
+    /// <summary>外部提交命令（默认 "claude"），通过 stdin 传入 prompt。</summary>
+    public string ClaudeCommand { get; set; } = "claude";
+
     /// <summary>窗口位置与尺寸记忆。</summary>
     public double WindowX { get; set; } = double.NaN;
     public double WindowY { get; set; } = double.NaN;

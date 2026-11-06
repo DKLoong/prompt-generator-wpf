@@ -23,7 +23,10 @@ public partial class SettingsWindow : Window
     /// <summary>用户确认后的界面主题（Cool / Warm / Graphite，对应 Themes/ThemeX.xaml）。</summary>
     public string ThemeText { get; private set; }
 
-    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled, string theme)
+    /// <summary>用户确认后的外部提交命令（如 "claude"）。</summary>
+    public string ClaudeCommandText { get; private set; }
+
+    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled, string theme, string claudeCommand)
     {
         InitializeComponent();
         HotkeyText = currentHotkey;
@@ -31,7 +34,9 @@ public partial class SettingsWindow : Window
         PinRecentEnabled = pinRecentEnabled;
         PasteCleanupEnabled = pasteCleanupEnabled;
         ThemeText = string.IsNullOrWhiteSpace(theme) ? Conventions.Themes.Cool : theme;
+        ClaudeCommandText = string.IsNullOrWhiteSpace(claudeCommand) ? "claude" : claudeCommand;
         HotkeyBox.Text = currentHotkey;
+        ClaudeCmdBox.Text = ClaudeCommandText;
         DockCheck.IsChecked = dockEnabled;
         PinRecentCheck.IsChecked = pinRecentEnabled;
         PasteCleanupCheck.IsChecked = pasteCleanupEnabled;
@@ -224,6 +229,7 @@ public partial class SettingsWindow : Window
         }
         HotkeyText = text;
         ThemeText = ThemeCombo.SelectedIndex switch { 1 => Conventions.Themes.Warm, 2 => Conventions.Themes.Graphite, _ => Conventions.Themes.Cool };
+        ClaudeCommandText = string.IsNullOrWhiteSpace(ClaudeCmdBox.Text) ? "claude" : ClaudeCmdBox.Text.Trim();
         DialogResult = true;
     }
 }
