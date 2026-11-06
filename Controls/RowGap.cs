@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using PromptGenerator;
 
 namespace PromptGenerator.Controls;
 
@@ -19,8 +20,8 @@ public class RowGap : UserControl
 
     public RowGap()
     {
-        Height = 16;
-        Margin = new Thickness(0, -4, 0, -4);
+        Height = Metrics.RowGapHeight;
+        Margin = new Thickness(0, -Spacing.Sm, 0, -Spacing.Sm);
         Background = Brushes.Transparent;
 
         _addBtn = new Button
@@ -43,8 +44,8 @@ public class RowGap : UserControl
             StrokeThickness = 1.6,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
-            Width = 12,
-            Height = 12,
+            Width = Metrics.GlyphSize,
+            Height = Metrics.GlyphSize,
             Stretch = Stretch.None,
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Center,

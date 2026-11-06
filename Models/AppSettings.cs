@@ -1,3 +1,5 @@
+using PromptGenerator;
+
 namespace PromptGenerator.Models;
 
 /// <summary>应用设置。</summary>
@@ -19,7 +21,7 @@ public class AppSettings
     public bool PasteCleanupEnabled { get; set; } = true;
 
     /// <summary>界面主题：Cool（冷灰·松绿，默认）/ Warm（暖灰·靛蓝）/ Graphite（石墨·低饱和紫），对应 Themes/ThemeX.xaml。</summary>
-    public string Theme { get; set; } = "Cool";
+    public string Theme { get; set; } = Conventions.Themes.Cool;
 
     /// <summary>窗口位置与尺寸记忆。</summary>
     public double WindowX { get; set; } = double.NaN;

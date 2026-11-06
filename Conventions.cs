@@ -1,0 +1,31 @@
+namespace PromptGenerator;
+
+/// <summary>跨文件共享的业务字符串常量（拖拽格式名、主题名、Tag 状态值、日志文件名）。</summary>
+public static class Conventions
+{
+    /// <summary>字段行拖拽 DataFormat 名。</summary>
+    public static class DragFormats
+    {
+        public const string Item = "PGItemDrag";
+    }
+
+    /// <summary>主题标识（与 Themes/*.xaml 文件名后缀一致）。</summary>
+    public static class Themes
+    {
+        public const string Cool = "Cool";
+        public const string Warm = "Warm";
+        public const string Graphite = "Graphite";
+    }
+
+    /// <summary>置顶按钮 Tag 状态值。</summary>
+    public static class PinState
+    {
+        public const string Pinned = "pinned";
+    }
+
+    /// <summary>日志/数据文件名。</summary>
+    public static class LogFile
+    {
+        public const string Crash = "crash.log";
+    }
+}

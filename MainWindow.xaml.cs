@@ -280,8 +280,8 @@ public partial class MainWindow : Window
 
         double w = _settings.WindowWidth > 0 ? _settings.WindowWidth : 365;
         double h = _settings.WindowHeight > 0 ? _settings.WindowHeight : 600;
-        Width = Math.Min(w, workWDip * 0.95);
-        Height = Math.Min(h, workHDip * 0.95);
+        Width = Math.Min(w, workWDip * Metrics.WindowMaxScreenRatio);
+        Height = Math.Min(h, workHDip * Metrics.WindowMaxScreenRatio);
 
         if (!double.IsNaN(_settings.WindowX) && !double.IsNaN(_settings.WindowY))
         {
@@ -540,7 +540,7 @@ public partial class MainWindow : Window
     private void UpdatePinVisual()
     {
         // 置顶态由模板的 Tag="pinned" 触发器渲染（紫色描边），未置顶时 Tag=null
-        PinBtn.Tag = _pinned ? "pinned" : null;
+        PinBtn.Tag = _pinned ? Conventions.PinState.Pinned : null;
         // 键盘切换置顶后焦点仍在本按钮：强制白色图标（本地值优先级最高），
         // 保持"键盘聚焦=白图标"的视觉（覆盖置顶触发器紫）；同时登记到焦点视觉集合，
         // 失焦时 OnButtonLostKeyboardFocus 才能 ClearValue 回落置顶紫/非置顶浅灰。
@@ -1695,21 +1695,21 @@ public partial class MainWindow : Window
         // 名头行：[*名头 | 20px ×列]，高 24 + 4px 缝（缝归名头 hover 区）
         // Background=Transparent：让名头整个矩形可命中，鼠标经缝/空隙移向 × 时不脱离 head 子树，
         // 避免 ghost MouseLeave 把 × 隐藏后无法恢复（根治 hover 时 × 不可选取/点击）。
-        var head = new Grid { Height = 28, VerticalAlignment = VerticalAlignment.Top, Background = Brushes.Transparent };
+        var head = new Grid { Height = Metrics.FieldRowHeadHeight, VerticalAlignment = VerticalAlignment.Top, Background = Brushes.Transparent };
         head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Metrics.FieldRowAddBtnWidth) });
 
         // slim 名头：无描边、透明底、强调色字、左对齐，右缘=内容框右缘（第 1 列 20px 留给 ×）
         var nameBox = new TextBox
         {
-            Height = 24,
+            Height = Metrics.NameBoxHeight,
             VerticalAlignment = VerticalAlignment.Top,
             Background = Brushes.Transparent,
             BorderThickness = new Thickness(0),
             FontSize = 16,
             FontWeight = FontWeights.Bold,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Padding = new Thickness(8, 0, 8, 0),
+            Padding = new Thickness(Spacing.Md, 0, Spacing.Md, 0),
             Text = field.Name
         };
         // 强调色动态引用：主题切换时字段名/光标/选中色自动跟随
@@ -1717,7 +1717,7 @@ public partial class MainWindow : Window
         nameBox.SetResourceReference(TextBoxBase.CaretBrushProperty, "AccentBrush");
         nameBox.SetResourceReference(TextBoxBase.SelectionBrushProperty, "AccentBrush");
         WatermarkService.SetWatermark(nameBox, "标题，如“要求”");
-        WatermarkService.SetWatermarkOffsetX(nameBox, 10);
+        WatermarkService.SetWatermarkOffsetX(nameBox, Metrics.NameBoxWatermarkOffsetX);
         PairCompletion.Attach(nameBox);
         nameBox.TextChanged += (_, _) =>
         {
@@ -1755,16 +1755,16 @@ public partial class MainWindow : Window
         // 拖拽落点：字段头行——拖到字段名区域 = 插到该字段开头；同样用 Preview 隧道先于字段名框 TextBox 收到。
         head.PreviewDragOver += (_, e) =>
         {
-            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            if (_current == null || !e.Data.GetDataPresent(Conventions.DragFormats.Item)) return;
             e.Effects = DragDropEffects.Move;
             e.Handled = true;
             SetDragHighlight(head);
         };
         head.PreviewDrop += (_, e) =>
         {
-            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            if (_current == null || !e.Data.GetDataPresent(Conventions.DragFormats.Item)) return;
             e.Handled = true;
-            if (e.Data.GetData("PGItemDrag") is not int[] data || data.Length != 2) return;
+            if (e.Data.GetData(Conventions.DragFormats.Item) is not int[] data || data.Length != 2) return;
             ClearDragHighlight();
             if (MoveItemTo(data[0], data[1], getRowIndex(), 0))
                 FocusItemInput(getRowIndex(), 0);
@@ -1804,9 +1804,9 @@ public partial class MainWindow : Window
             Background = Brushes.Transparent
         };
         // 编号列 34px（预留两位数"10."），文本框自适应，× 列 20px
-        item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(34) });
+        item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Metrics.FieldRowNumberWidth) });
         item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(20) });
+        item.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Metrics.FieldRowAddBtnWidth) });
 
         // 动态读取本行在 right.Children 中的实际位置；增量插入/删除后旧闭包自动得到正确索引
         Func<int> getIndex = () =>
@@ -1864,7 +1864,7 @@ public partial class MainWindow : Window
                 try
                 {
                     if (_current != null && fr >= 0 && fi >= 0)
-                        DragDrop.DoDragDrop(num, new DataObject("PGItemDrag", new[] { fr, fi }), DragDropEffects.Move);
+                        DragDrop.DoDragDrop(num, new DataObject(Conventions.DragFormats.Item, new[] { fr, fi }), DragDropEffects.Move);
                 }
                 finally
                 {
@@ -1917,7 +1917,7 @@ public partial class MainWindow : Window
         ta.Padding = new Thickness(4, 4, 4, 4);
         ta.HorizontalAlignment = HorizontalAlignment.Stretch;
         WatermarkService.SetWatermark(ta, "正文，回车加条，Shift+Enter换行");
-        WatermarkService.SetWatermarkOffsetX(ta, 11);
+        WatermarkService.SetWatermarkOffsetX(ta, Metrics.FieldWatermarkOffsetX);
         PairCompletion.Attach(ta);
         DataObject.AddPastingHandler(ta, OnContentPaste);
         ta.PreviewKeyDown += (_, e) =>
@@ -2041,16 +2041,16 @@ public partial class MainWindow : Window
         // （DataObject 格式 PGItemDrag），文本拖拽等外部拖放仍放行给 TextBox。
         item.PreviewDragOver += (_, e) =>
         {
-            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            if (_current == null || !e.Data.GetDataPresent(Conventions.DragFormats.Item)) return;
             e.Effects = DragDropEffects.Move;
             e.Handled = true;
             SetDragHighlight(item);
         };
         item.PreviewDrop += (_, e) =>
         {
-            if (_current == null || !e.Data.GetDataPresent("PGItemDrag")) return;
+            if (_current == null || !e.Data.GetDataPresent(Conventions.DragFormats.Item)) return;
             e.Handled = true;
-            if (e.Data.GetData("PGItemDrag") is not int[] data || data.Length != 2) return;
+            if (e.Data.GetData(Conventions.DragFormats.Item) is not int[] data || data.Length != 2) return;
             var pos = e.GetPosition(item);
             int tr = getRowIndex();
             int ti = getIndex() + (pos.Y >= item.ActualHeight / 2 ? 1 : 0);

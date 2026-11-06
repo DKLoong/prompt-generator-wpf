@@ -30,12 +30,12 @@ public partial class SettingsWindow : Window
         DockEnabled = dockEnabled;
         PinRecentEnabled = pinRecentEnabled;
         PasteCleanupEnabled = pasteCleanupEnabled;
-        ThemeText = string.IsNullOrWhiteSpace(theme) ? "Cool" : theme;
+        ThemeText = string.IsNullOrWhiteSpace(theme) ? Conventions.Themes.Cool : theme;
         HotkeyBox.Text = currentHotkey;
         DockCheck.IsChecked = dockEnabled;
         PinRecentCheck.IsChecked = pinRecentEnabled;
         PasteCleanupCheck.IsChecked = pasteCleanupEnabled;
-        ThemeCombo.SelectedIndex = ThemeText switch { "Warm" => 1, "Graphite" => 2, _ => 0 };
+        ThemeCombo.SelectedIndex = ThemeText switch { Conventions.Themes.Warm => 1, Conventions.Themes.Graphite => 2, _ => 0 };
         // 弹窗打开后焦点留在窗口本身（不自动聚焦热键框）：点击热键框才进入"全选 + 按键捕获"态
         Loaded += (_, _) =>
         {
@@ -223,7 +223,7 @@ public partial class SettingsWindow : Window
             return;
         }
         HotkeyText = text;
-        ThemeText = ThemeCombo.SelectedIndex switch { 1 => "Warm", 2 => "Graphite", _ => "Cool" };
+        ThemeText = ThemeCombo.SelectedIndex switch { 1 => Conventions.Themes.Warm, 2 => Conventions.Themes.Graphite, _ => Conventions.Themes.Cool };
         DialogResult = true;
     }
 }

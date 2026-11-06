@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using PromptGenerator;
 
 namespace PromptGenerator.Controls;
 
@@ -24,7 +25,7 @@ public class SplitButton : UserControl
         var root = new Border
         {
             CornerRadius = new CornerRadius(4),
-            Height = 36,
+            Height = Metrics.SplitButtonHeight,
             Cursor = System.Windows.Input.Cursors.Hand,
             ClipToBounds = true
         };
@@ -33,7 +34,7 @@ public class SplitButton : UserControl
 
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(36) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Metrics.SplitButtonActionColWidth) });
 
         _leftBtn = new Button
         {
@@ -77,7 +78,7 @@ public class SplitButton : UserControl
         // 两列之间的 1px 分隔竖线（原来由默认 Button 模板绘制，自定义模板后需手动补回）
         var divider = new Border
         {
-            Width = 1,
+            Width = Metrics.SplitButtonDividerWidth,
             VerticalAlignment = VerticalAlignment.Stretch,
             Background = new SolidColorBrush(Color.FromArgb(0x55, 0xff, 0xff, 0xff)),
             IsHitTestVisible = false
@@ -103,7 +104,7 @@ public class SplitButton : UserControl
         var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
         presenter.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
         presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-        presenter.SetValue(ContentPresenter.MarginProperty, new Thickness(8, 0, 8, 0));
+        presenter.SetValue(ContentPresenter.MarginProperty, new Thickness(Spacing.Md, 0, Spacing.Md, 0));
         border.AppendChild(presenter);
 
         templ.VisualTree = border;

@@ -97,7 +97,7 @@ public partial class App : Application
 
         // 初始化统一日志：从设置读取 LogLevel，命令行 --debug 可临时提升到 Debug
         int settingsLevel = 2; // Info
-        string theme = "Cool";
+        string theme = Conventions.Themes.Cool;
         try
         {
             var settings = new SettingsStore(AppPaths.DataDir).Load();
@@ -122,7 +122,7 @@ public partial class App : Application
     /// <summary>应用主题：替换 Application 资源中第一个合并字典（默认 ThemeCool）。供启动加载与设置页即时切换共用。</summary>
     public static void ApplyTheme(string theme)
     {
-        if (string.IsNullOrWhiteSpace(theme)) theme = "Cool";
+        if (string.IsNullOrWhiteSpace(theme)) theme = Conventions.Themes.Cool;
         try
         {
             // 从程序集内嵌资源加载（Themes/*.xaml 编译为 BAML，单文件发布兼容）
@@ -203,7 +203,7 @@ public partial class App : Application
     {
         try
         {
-            var path = Path.Combine(AppPaths.DataDir, "crash.log");
+            var path = Path.Combine(AppPaths.DataDir, Conventions.LogFile.Crash);
             var msg = $"\n[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] [{source}]\n{ex}\n";
             File.AppendAllText(path, msg, Encoding.UTF8);
         }
