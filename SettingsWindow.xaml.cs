@@ -1,6 +1,9 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Microsoft.Win32;
+using PromptGenerator.Models;
 using PromptGenerator.Services;
 
 namespace PromptGenerator;
@@ -26,7 +29,12 @@ public partial class SettingsWindow : Window
     /// <summary>用户确认后的外部提交命令（如 "claude"）。</summary>
     public string ClaudeCommandText { get; private set; }
 
-    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled, string theme, string claudeCommand)
+    /// <summary>导入操作后为 true，通知主窗口刷新模板列表。</summary>
+    public bool TemplatesChanged { get; private set; }
+
+    private readonly Template? _currentTemplate;
+
+    public SettingsWindow(string currentHotkey, bool dockEnabled, bool pinRecentEnabled, bool pasteCleanupEnabled, string theme, string claudeCommand, Template? currentTemplate = null)
     {
         InitializeComponent();
         HotkeyText = currentHotkey;
@@ -35,6 +43,7 @@ public partial class SettingsWindow : Window
         PasteCleanupEnabled = pasteCleanupEnabled;
         ThemeText = string.IsNullOrWhiteSpace(theme) ? Conventions.Themes.Cool : theme;
         ClaudeCommandText = string.IsNullOrWhiteSpace(claudeCommand) ? "claude" : claudeCommand;
+        _currentTemplate = currentTemplate;
         HotkeyBox.Text = currentHotkey;
         ClaudeCmdBox.Text = ClaudeCommandText;
         DockCheck.IsChecked = dockEnabled;
@@ -218,6 +227,84 @@ public partial class SettingsWindow : Window
     }
 
     private void CancelBtn_Click(object sender, RoutedEventArgs e) => DialogResult = false;
+
+    private void ImportBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "模板文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+            Title = "导入模板"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var store = new TemplateStore();
+            int count = store.Import(dlg.FileName, out var skipped);
+            TemplatesChanged = true;
+
+            string msg = $"成功导入 {count} 个模板";
+            if (skipped.Count > 0)
+            {
+                msg += $"\n\n{skipped.Count} 个模板因重复未导入：\n" + string.Join("\n", skipped);
+            }
+            MessageBox.Show(this, msg, "导入完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"导入失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportAllBtn_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "模板文件 (*.json)|*.json",
+            FileName = "prompt-generator-templates.json",
+            Title = "导出全部模板"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var store = new TemplateStore();
+            store.ExportAll(dlg.FileName);
+            MessageBox.Show(this, "导出成功", "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"导出失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportCurrentBtn_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentTemplate == null)
+        {
+            MessageBox.Show(this, "当前没有选中的模板", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new SaveFileDialog
+        {
+            Filter = "模板文件 (*.json)|*.json",
+            FileName = _currentTemplate.Name + ".json",
+            Title = "导出当前模板"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var store = new TemplateStore();
+            store.ExportTemplate(_currentTemplate, dlg.FileName);
+            MessageBox.Show(this, "导出成功", "导出完成", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"导出失败：{ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
 
     private void SaveBtn_Click(object sender, RoutedEventArgs e)
     {

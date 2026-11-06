@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using PromptGenerator.Models;
 
@@ -69,6 +70,110 @@ public class TemplateStore
             Logging.Error($"模板保存失败：{ex.Message}");
             throw new IOException($"保存模板失败: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>导出全部模板到指定文件（导出副本，清空 LastUsedAt，不影响内存数据）。</summary>
+    public void ExportAll(string path)
+    {
+        var data = Load();
+        // 创建副本，清空使用状态，导出干净的模板文件
+        var exportData = new TemplateStoreData();
+        foreach (var t in data.Templates)
+        {
+            exportData.Templates.Add(new Template
+            {
+                Id = t.Id,
+                Name = t.Name,
+                Fields = t.Fields.Select(f => new Field { Name = f.Name, Items = new List<string>(f.Items) }).ToList()
+                // LastUsedAt 不导出
+            });
+        }
+        File.WriteAllText(path, JsonSerializer.Serialize(exportData, JsonOpts));
+    }
+
+    /// <summary>导出单个模板到指定文件（导出副本，清空 LastUsedAt，不影响内存数据）。</summary>
+    public void ExportTemplate(Template template, string path)
+    {
+        var exportTemplate = new Template
+        {
+            Id = template.Id,
+            Name = template.Name,
+            Fields = template.Fields.Select(f => new Field { Name = f.Name, Items = new List<string>(f.Items) }).ToList()
+            // LastUsedAt 不导出
+        };
+        File.WriteAllText(path, JsonSerializer.Serialize(exportTemplate, JsonOpts));
+    }
+
+    /// <summary>清除内存缓存，下次 Load() 强制从文件重读。</summary>
+    public void Refresh() => _cache = null;
+
+    /// <summary>从文件导入模板，自动去重 + 重名改名追加。返回导入的模板数。</summary>
+    /// <param name="path">模板文件路径</param>
+    /// <param name="skippedReasons">输出：被跳过的模板及原因</param>
+    public int Import(string path, out List<string> skippedReasons)
+    {
+        skippedReasons = new List<string>();
+        var json = File.ReadAllText(path);
+        var data = Load();
+
+        List<Template> imported = new();
+
+        // 先检查根对象结构：有 "Templates" 属性则是全部模板格式，否则按单个模板解析
+        using var doc = JsonDocument.Parse(json);
+        bool isAllFormat = doc.RootElement.TryGetProperty("Templates", out _);
+
+        if (isAllFormat)
+        {
+            var all = JsonSerializer.Deserialize<TemplateStoreData>(json, JsonOpts);
+            if (all != null)
+                imported.AddRange(all.Templates);
+        }
+        else
+        {
+            var single = JsonSerializer.Deserialize<Template>(json, JsonOpts);
+            if (single != null)
+                imported.Add(single);
+        }
+
+        if (imported.Count == 0) return 0;
+
+        // 内容比较：序列化 Fields 为字符串，完全一致才算内容相同
+        static string ContentHash(Template t) => JsonSerializer.Serialize(t.Fields, JsonOpts);
+
+        int added = 0;
+        foreach (var t in imported)
+        {
+            string importContent = ContentHash(t);
+
+            // 第一步：检查与现有模板是否内容重复
+            var sameContent = data.Templates.FirstOrDefault(existing => ContentHash(existing) == importContent);
+            if (sameContent != null)
+            {
+                skippedReasons.Add($"「{t.Name}」与「{sameContent.Name}」内容重复，未导入");
+                continue;
+            }
+
+            // 生成新 Id，避免和现有模板冲突
+            t.Id = Guid.NewGuid().ToString("N");
+            t.IsTemp = false;
+            t.LastUsedAt = null;
+
+            // 第二步：名称相同 → 自动改名追加（内容已确认不同）
+            var name = t.Name;
+            int suffix = 2;
+            while (data.Templates.Any(x => x.Name == name))
+            {
+                name = $"{t.Name} ({suffix})";
+                suffix++;
+            }
+            t.Name = name;
+
+            data.Templates.Add(t);
+            added++;
+        }
+
+        Save(data);
+        return added;
     }
 
     /// <summary>预置模板集：通用任务 + 13 个日常场景（信息检索/文档编辑/图片生成等）。

@@ -594,6 +594,30 @@ public partial class MainWindow : Window
         UpdateTemplateBoxVisual();   // 启动/刷新后按显示态刷新模板框文字颜色（灰字）
     }
 
+    /// <summary>导入模板后刷新下拉列表，保持当前选中模板和字段内容不变。</summary>
+    private void ReloadTemplateList()
+    {
+        string? currentId = _current?.Id;
+        _loadingTemplates = true;
+        _filterActive = false;
+        _store.Refresh();   // 强制从文件重读（SettingsWindow 是独立实例，缓存不共享）
+        _data = _store.Load();
+        _templatesView = new ListCollectionView(GetDisplayOrder().ToList());
+        _templatesView.Filter = null;
+        TemplateBox.ItemsSource = _templatesView;
+        TemplateBox.DisplayMemberPath = nameof(PromptGenerator.Models.Template.Name);
+        // 保持当前选中（按 Id 匹配；若导入后原模板仍在则选中它）
+        var match = _data.Templates.FirstOrDefault(t => t.Id == currentId);
+        if (match != null)
+        {
+            TemplateBox.SelectedItem = match;
+            TemplateBox.Text = match.Name;
+        }
+        _loadingTemplates = false;
+        UpdateTemplateBoxVisual();
+        Logging.Debug("导入后刷新模板列表完成");
+    }
+
     /// <summary>视图层显示顺序：开启"最近使用置顶"时，最近使用的 5 个模板排最前，其余保持存储顺序；不改变 _data.Templates 本身。</summary>
     private IEnumerable<Template> GetDisplayOrder()
     {
@@ -2855,8 +2879,14 @@ public partial class MainWindow : Window
         _hotkey?.Unregister();
         Logging.Debug("设置期间禁用全局热键");
 
-        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled, _settings.Theme, _settings.ClaudeCommand) { Owner = this };
+        var dlg = new SettingsWindow(_settings.Hotkey, _settings.EdgeDockEnabled, _settings.PinRecentTemplates, _settings.PasteCleanupEnabled, _settings.Theme, _settings.ClaudeCommand, _current) { Owner = this };
         bool saved = dlg.ShowDialog() == true;
+
+        // 导入操作即时生效，无需点保存；关闭设置窗口后刷新模板列表（保持当前选中不变）
+        if (dlg.TemplatesChanged)
+        {
+            ReloadTemplateList();
+        }
 
         if (_hotkey != null)
         {
