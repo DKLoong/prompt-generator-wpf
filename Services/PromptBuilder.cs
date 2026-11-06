@@ -17,6 +17,10 @@ public static class PromptBuilder
 {
     private static readonly char[] ReplaceWithPeriod = { '，', '、', '；', '：', ',', ';', ':' };
     private static readonly char[] NoAppendPunct = { '。', '！', '？', '…', '.', '!', '?' };
+    // 非末条时，句末已有标点（遇到这些就不加 ；）
+    private static readonly char[] NonAppendSemicolon = { '。', '！', '？', '…', '.', '!', '?', '，', '、', '；', '：', ',', ';', ':' };
+    // 非末条时，句末停顿标点替换为 ；（仅无包裹符号场景；有包裹符号时走 NonAppendSemicolon 逻辑保持原样）
+    private static readonly char[] ReplaceWithSemicolon = { '，', '、', '：', ',', ':' };
     private static readonly char[] OpenWrapper = { '“', '‘', '（', '「', '『', '【', '《', '<', '"', '\'', '(' };
     private static readonly char[] CloseWrapper = { '”', '’', '）', '」', '』', '】', '》', '>', '"', '\'', ')' };
 
@@ -67,16 +71,22 @@ public static class PromptBuilder
         }
 
         char end = tail.Length > 0 ? tail[^1] : '\0';
-        bool hasPunct = char.IsPunctuation(end) || end == '…';
+        bool hasPunct = Array.IndexOf(NonAppendSemicolon, end) >= 0;
         bool endsWithPeriod = end == '。' || end == '.';
         bool isReplaceable = Array.IndexOf(ReplaceWithPeriod, end) >= 0;
         bool noAppend = Array.IndexOf(NoAppendPunct, end) >= 0;
+        // 非末条 + 无包裹符号 + 末尾是停顿标点 → 替换为 ；
+        bool semiReplace = !isLast && stripped == 0 && Array.IndexOf(ReplaceWithSemicolon, end) >= 0;
 
         string toAppend;
         if (isLast)
         {
             if (endsWithPeriod || noAppend) toAppend = "";
             else toAppend = "。";
+        }
+        else if (semiReplace)
+        {
+            toAppend = "；";
         }
         else
         {
@@ -95,6 +105,10 @@ public static class PromptBuilder
         else if (isLast && isReplaceable && !endsWithPeriod)
         {
             final = s[..^1]; // 去掉末尾可替换标点，再加句号
+        }
+        else if (semiReplace)
+        {
+            final = s[..^1]; // 去掉末尾停顿标点，替换为 ；
         }
 
         sb.Clear().Append(final).Append(toAppend);
