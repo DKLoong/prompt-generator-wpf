@@ -33,7 +33,7 @@ public partial class MainWindow : Window
     {
         var accent = (SolidColorBrush)Application.Current.FindResource("AccentBrush");
         var c = accent.Color;
-        return new SolidColorBrush(Color.FromArgb(0x26, c.R, c.G, c.B));
+        return new SolidColorBrush(Color.FromArgb(Conventions.OverlayAlpha, c.R, c.G, c.B));
     }
     private bool _allowClose; // 托盘"退出"触发时置 true，允许真正关闭
     private readonly SettingsStore _settingsStore;
@@ -1731,7 +1731,7 @@ public partial class MainWindow : Window
             IsTabStop = false,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(0, 4, 0, 0),
+            Margin = new Thickness(0, Spacing.Sm, 0, 0),
             Opacity = 0,
             IsHitTestVisible = false
         };
@@ -1912,7 +1912,7 @@ public partial class MainWindow : Window
         var ta = new AutoGrowTextBox { Text = field.Items[itemIndex] };
         ta.Style = FindFieldInputStyle();
         ta.FontSize = 14;
-        ta.Padding = new Thickness(4, 4, 4, 4);
+        ta.Padding = new Thickness(Spacing.Sm);
         ta.HorizontalAlignment = HorizontalAlignment.Stretch;
         WatermarkService.SetWatermark(ta, "正文，回车加条，Shift+Enter换行");
         WatermarkService.SetWatermarkOffsetX(ta, Metrics.FieldWatermarkOffsetX);

@@ -28,4 +28,7 @@ public static class Conventions
     {
         public const string Crash = "crash.log";
     }
+
+    /// <summary>半透明背景叠加层 alpha 值（0x26 ≈ 15% 不透明度）。</summary>
+    public const byte OverlayAlpha = 0x26;
 }
