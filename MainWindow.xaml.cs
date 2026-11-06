@@ -1021,7 +1021,7 @@ public partial class MainWindow : Window
         if (_renaming && onToggle)
         {
             e.Handled = true;   // 阻止焦点转移与列表切换
-            ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
+            ShowToast(Conventions.Messages.ExitEditFirst, false);
             return;
         }
         if (!_renaming && !onToggle && IsDisplayMode())
@@ -1287,7 +1287,7 @@ public partial class MainWindow : Window
             t != _current && string.Equals(t.Name?.Trim(), newName, StringComparison.Ordinal));
         if (dup != null)
         {
-            ShowToast($"模板名「{newName}」已存在", false);
+            ShowToast(Conventions.Messages.TemplateNameExists(newName), false);
             return false;   // 保持改名态，用户可继续修改
         }
         if (_current != null && _current.Name != newName)
@@ -1533,7 +1533,7 @@ public partial class MainWindow : Window
             t != _current && string.Equals(t.Name?.Trim(), _current.Name.Trim(), StringComparison.Ordinal));
         if (dup != null)
         {
-            ShowToast($"模板名「{_current.Name}」已存在", false);
+            ShowToast(Conventions.Messages.TemplateNameExists(_current.Name), false);
             return;
         }
         if (UpdateDup())
@@ -1552,7 +1552,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             Logging.Error($"保存模板失败：{_current.Name}，原因={ex.Message}");
-            ShowToast($"保存失败：{ex.Message}", false);
+            ShowToast(Conventions.Messages.SaveFailed(ex.Message), false);
         }
     }
 
@@ -2432,7 +2432,7 @@ public partial class MainWindow : Window
             || ((e.Key == Key.Down || (e.Key == Key.System && e.SystemKey == Key.Down)) && Keyboard.Modifiers == ModifierKeys.Alt)))
         {
             e.Handled = true;
-            ShowToast("请先退出编辑操作，按Enter（保存）或ESC（取消）", false);
+            ShowToast(Conventions.Messages.ExitEditFirst, false);
             return;
         }
         // 显示态：F4/Alt+Down 弹列表浏览（不改只读模板名）；↓ 首次弹列表，列表已开则交导航块
@@ -2900,7 +2900,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            ShowToast($"保存失败：{ex.Message}", false);
+            ShowToast(Conventions.Messages.SaveFailed(ex.Message), false);
         }
 
         // 置顶开关可能已变化：重建模板下拉显示顺序（保留当前选中项）

@@ -31,4 +31,17 @@ public static class Conventions
 
     /// <summary>半透明背景叠加层 alpha 值（0x26 ≈ 15% 不透明度）。</summary>
     public const byte OverlayAlpha = 0x26;
+
+    /// <summary>Toast 提示消息（避免多处硬编码不一致）。</summary>
+    public static class Messages
+    {
+        /// <summary>编辑操作未退出时的拦截提示。</summary>
+        public const string ExitEditFirst = "请先退出编辑操作，按Enter（保存）或ESC（取消）";
+
+        /// <summary>模板名已存在提示。</summary>
+        public static string TemplateNameExists(string name) => $"模板名「{name}」已存在";
+
+        /// <summary>保存失败提示。</summary>
+        public static string SaveFailed(string reason) => $"保存失败：{reason}";
+    }
 }
